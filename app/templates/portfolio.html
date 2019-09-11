@@ -1,7 +1,60 @@
 {% extends "base.html" %}
 {% block content %}
+<br>
+
+<!-- Pinned cards -->
+<div class="container mt-2" id="cardsFavourites" xmlns="http://www.w3.org/1999/html">
+    <h4>Most used</h4>
+    <hr>
+    <div class="card-deck">
+    {% for i in range(3) %}
+        {% for tosca_filename, tosca in templates.items() %}
+            {% if tosca['metadata']['pinned'] == 'yes' %}
+                {% if i == tosca['metadata']['pin_order'] %}
+                    <div class="card mb-4" style="max-width: 20rem; max-height: 25rem;">
+                        <div class="card-body">
+                            <h5 class="card-title text-center">
+                                <strong>
+                                {% if tosca['metadata']['display_name'] is defined %}{{tosca['metadata']['display_name']}}{% else %}{{tosca_filename}}{% endif %}
+                                </strong>
+                            </h5>
+                        </div>
+                        <div class="wrapper">
+                            <img class="card-img-bottom img-fluid" src="{{tosca['metadata']['icon']}}" alt="Pinned cards">
+                            {% if tosca['metadata']['virtualization_type'] is defined %}
+                            {% if tosca['metadata']['virtualization_type'] == 'Express' %}
+                            <div class="corner-ribbon bottom-right sticky blue shadow">{{tosca['metadata']['virtualization_type']}}</div>
+                            {% elif tosca['metadata']['virtualization_type'] == 'Docker' %}
+                            <div class="corner-ribbon bottom-right sticky red shadow">{{tosca['metadata']['virtualization_type']}}</div>
+                            {% elif tosca['metadata']['virtualization_type'] == 'Live build' %}
+                            <div class="corner-ribbon bottom-right sticky green shadow">{{tosca['metadata']['virtualization_type']}}</div>
+                            {% endif %}
+                            {% endif %}
+                        </div>
+                        <div class="card-img-overlay text-center">
+                            <h5>
+                                <strong>
+                                {% if tosca['metadata']['display_name'] is defined %}{{tosca['metadata']['display_name']}}{% else %}{{tosca_filename}}{% endif %}
+                                </strong>
+                            </h5>
+                            <p id="toscaDescription" class="card-text tosca-descr"><small>{{tosca['description']}}</small></p>
+                            <a selector="toscaDescription" class="text-left badge badge-pill badge-info read_more" tabindex="0" data-toggle="popover" title="Full description" data-trigger="focus" data-content="{{tosca['description']}}">Read More</a>
+                            <a href="{{ url_for('configure', selected_tosca=tosca_filename) }}" class="badge badge-pill badge-primary">Configure</a>
+                        </div>
+                    </div>
+                {% endif %}
+            {% endif %}
+        {% endfor %}
+    {% endfor %}
+    </div>
+    <hr>
+</div>
+<!-- End pinned cards -->
+
 
 <div class="container mt-2" id="cardsContainer" xmlns="http://www.w3.org/1999/html">
+    <h4>All applications</h4>
+    <hr>
     <div class="input-group mb-4">
       <div class="input-group-prepend">
           <div class="input-group-text"><i class="fa fa-search"></i></div>
@@ -24,6 +77,15 @@
             </div>
             <div class="wrapper">
                 <img class="card-img-bottom img-fluid" src="{{tosca['metadata']['icon']}}" alt="Card image cap">
+                {% if tosca['metadata']['virtualization_type'] is defined %}
+                {% if tosca['metadata']['virtualization_type'] == 'Express' %}
+                <div class="corner-ribbon bottom-right sticky blue shadow">{{tosca['metadata']['virtualization_type']}}</div>
+                {% elif tosca['metadata']['virtualization_type'] == 'Docker' %}
+                <div class="corner-ribbon bottom-right sticky red shadow">{{tosca['metadata']['virtualization_type']}}</div>
+                {% elif tosca['metadata']['virtualization_type'] == 'Live build' %}
+                <div class="corner-ribbon bottom-right sticky green shadow">{{tosca['metadata']['virtualization_type']}}</div>
+                {% endif %}
+                {% endif %}
             </div>
             <div class="card-img-overlay text-center">
                 <h5>
@@ -102,6 +164,7 @@ $(".tosca-descr").dotdotdot({
   color: white;
   //font-family: 'Abel', sans-serif;
   //font-family: 'Roboto Condensed', sans-serif;
+  opacity: 0.90;
 }
 
 
@@ -126,6 +189,90 @@ $(".tosca-descr").dotdotdot({
     padding: 25px;
 }
 
+
+*{
+  margin: 0;
+  padding: 0;
+}
+
+body{
+  background: #f0f0f0;
+  font-family: 'Noto Sans', sans-serif;
+}
+
+h1{
+  width: 500px;
+  height: 100px;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  margin: -100px 0 0 -275px;
+  font-size: 3.2em;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+  line-height: 100px;
+  color: #aaa;
+}
+
+h2{
+  width: 500px;
+  height: 100px;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  margin: 0 0 0 -225px;
+  font-size: 1.6em;
+  font-weight: 400;
+  text-align: center;
+  line-height: 100%;
+  color: #bbb;
+}
+
+/* The ribbons */
+
+.corner-ribbon{
+  width: 200px;
+  background: #e43;
+  position: absolute;
+  top: 25px;
+  left: -40px;
+  text-align: center;
+  font-size:15px;
+  line-height: 30px;
+  letter-spacing: 1px;
+  color: #f0f0f0;
+  transform: rotate(-45deg);
+  -webkit-transform: rotate(-45deg);
+}
+
+.corner-ribbon.shadow{
+  box-shadow: 0 0 3px rgba(0,0,0,.3);
+}
+
+/* Different positions */
+
+.corner-ribbon.bottom-right{
+  top: auto;
+  right: -70px;
+  bottom: 25px;
+  left: auto;
+  transform: rotate(-45deg);
+  -webkit-transform: rotate(-45deg);
+}
+
+/* Colors */
+
+.corner-ribbon.white{background: #f0f0f0; color: #555;}
+.corner-ribbon.black{background: #333;}
+.corner-ribbon.grey{background: #999;}
+.corner-ribbon.blue{background: #39d;}
+.corner-ribbon.green{background: #2c7;}
+.corner-ribbon.turquoise{background: #1b9;}
+.corner-ribbon.purple{background: #95b;}
+.corner-ribbon.red{background: #e43;}
+.corner-ribbon.orange{background: #e82;}
+.corner-ribbon.yellow{background: #ec0;}
 </style>
 
 

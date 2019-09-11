@@ -59,7 +59,7 @@
 <body>
     <nav class="navbar navbar-dark bg-dark navbar-expand-md">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url_for("home") }}">PaaS Orchestrator Dashboard</a>
+            <div><a class="navbar-brand" href="{{ url_for("home") }}"><img src="https://raw.githubusercontent.com/Laniakea-elixir-it/resources/master/logos/ELIXIR_ITALY_orange.png" width="40" alt=""> Laniakea Dashboard</a></div>
             <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#myNavbar">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -67,8 +67,13 @@
                 <ul class="navbar-nav mr-auto">
                     {% if session['username'] %}
                     <li class="nav-item active"><a class="nav-link" href="{{ url_for("showdeployments") }}">Deployments</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for("getslas") }}">SLAs</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for("show_settings") }}">Settings</a></li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">Advanced</a>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" href="{{ url_for("getslas") }}">SLAs</a>
+                            <a class="dropdown-item" href="{{ url_for("show_settings") }}">Settings</a>
+                        </div>
+                    </li>
                     {% if session['userrole'] == 'admin' %}
                     <li class="nav-item"><a class="nav-link" href="{{ url_for('show_users') }}">Users</a></li>
                     {% endif %}
@@ -81,6 +86,8 @@
                             <img class="rounded-circle" src="{{ session['gravatar'] }}"</src> {{ session['username'] }}<span class="caret"></span>
                         </a>
                         <div class="dropdown-menu">
+                            <a class="dropdown-item" href="{{ url_for('ssh_keys') }}">SSH keys</a>
+                            <div class="dropdown-divider"></div>
                             <a class="dropdown-item" href="{{ url_for("logout") }}">Logout</a>
                         </div>
 	            </li>

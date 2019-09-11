@@ -110,7 +110,7 @@ class VaultIntegration:
     response = requests.post(write_url, headers=headers, data=data, verify=False)
 
     deserialized_response = json.loads(response.text)
-
+    print(deserialized_response)
     try:
       deserialized_response["data"]
     except KeyError:

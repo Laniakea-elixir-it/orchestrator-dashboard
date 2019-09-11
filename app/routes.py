@@ -739,7 +739,29 @@ def showdeployments():
         else:
             deployments = response.json()["content"]
             deployments = updatedeploymentsstatus(deployments, session['userid'])
-        return render_template('deployments.html', deployments=deployments)
+
+        inputs={}
+        for deployment in deployments:
+            depid = deployment['uuid']
+            dep = get_deployment(depid)
+
+            inputs[depid] = {
+                             "galaxy_flavor": dep['inputs']['flavor'],
+                             "infra_config": "single_vm",
+                             "instance_flavor": {
+                                                 "fe": "",
+                                                 "wn": ""
+                                                },
+                            }
+            
+            if 'instance_flavor' in dep['inputs']:
+                inputs[depid]['instance_flavor']['fe'] = dep['inputs']['instance_flavor']
+            elif 'fe_instance_flavor' in dep['inputs']:
+                inputs[depid]['infra_config'] = 'cluster'
+                inputs[depid]['instance_flavor']['fe'] = dep['inputs']['fe_instance_flavor']
+                inputs[depid]['instance_flavor']['wn'] = dep['inputs']['wn_instance_flavor']
+
+        return render_template('deployments.html', deployments=deployments, inputs=inputs)
     except Exception as error:
         logexception(error)
         return redirect(url_for('logout'))
@@ -808,16 +830,19 @@ def encrypted_volume_status(depid=None):
 
         if 'node_ip' in dep['outputs']:
             api_status = 'https://' + dep['outputs']['node_ip'] + ':5000/luksctl_api/v1.0/status'
-            try:
-              response = requests.get(api_status, verify=False)
-            except:
-              return 'unavailable'
-
-            deserialized_response = json.loads(response.text)
-            return deserialized_response['volume_state']
-
+        elif 'cluster_ip' in dep['outputs']:
+            api_status = 'https://' + dep['outputs']['cluster_ip'] + ':5000/luksctl_api/v1.0/status'
         else:
             return 'unavailable'
+
+        try:
+            response = requests.get(api_status, verify=False)
+        except:
+            return 'unavailable'
+
+        deserialized_response = json.loads(response.text)
+        return deserialized_response['volume_state']
+
 
 
 def is_endpoint_online(depid=None):
@@ -895,9 +920,9 @@ def configure():
 
     access_token = iam_blueprint.session.token['access_token']
 
-
-
     selected_tosca = request.args['selected_tosca']
+
+    ssh_pub_key =  get_ssh_pub_key()
 
     try:
         slas = get_slas(access_token)
@@ -909,6 +934,7 @@ def configure():
     return render_template('createdep.html',
                            template=toscaInfo[selected_tosca],
                            selectedTemplate=selected_tosca,
+                           ssh_pub_key=ssh_pub_key,
                            slas=slas)
 
 
@@ -979,6 +1005,9 @@ def createdep():
                 app.logger.debug("Storage encryption enabled, appending wrapping token.")
                 inputs['vault_wrapping_token'] = create_vault_wrapping_token(access_token)
                 inputs['vault_secret_path'] = session['userid'] + '/' + vault_secret_uuid
+
+            if inputs['instance_key_pub'] == '':
+                inputs['instance_key_pub'] = get_ssh_pub_key() 
 
             app.logger.debug("Parameters: " + json.dumps(inputs))
 
@@ -1248,7 +1277,12 @@ def encrypted_volume_open(depid=None):
                 "secret_key": user_key
                }
 
-        api_open = 'https://' + dep['outputs']['node_ip'] + ':5000/luksctl_api/v1.0/open'
+        if 'node_ip' in dep['outputs']:
+            api_open = 'https://' + dep['outputs']['node_ip'] + ':5000/luksctl_api/v1.0/open'
+        elif 'cluster_ip' in dep['outputs']:
+            api_open = 'https://' + dep['outputs']['cluster_ip'] + ':5000/luksctl_api/v1.0/open'
+        else:
+            return 'unavailable'
 
         response = requests.post(api_open, json=payload, verify=False)
 
@@ -1279,10 +1313,279 @@ def galaxy_startup(depid=None):
                 "endpoint": dep['outputs']['endpoint']
                }
 
-        api_startup = 'http://' + dep['outputs']['node_ip'] + '/galaxyctl_api/v1.0/galaxy-startup'
+        if 'node_ip' in dep['outputs']:
+            api_startup = 'http://' + dep['outputs']['node_ip'] + ':5001/galaxyctl_api/v1.0/galaxy-startup'
+        elif 'cluster_ip' in dep['outputs']:
+            api_startup = 'http://' + dep['outputs']['cluster_ip'] + ':5001/galaxyctl_api/v1.0/galaxy-startup'
+        else:
+            return 'unavailable'
 
         response = requests.post(api_startup, json=payload, verify=False)
 
         deserialized_response = json.loads(response.text)
 
         return deserialized_response['galaxy']
+
+
+@app.route('/ssh_keys')
+def ssh_keys():
+    if not iam_blueprint.session.authorized:
+        return redirect(url_for('login'))
+
+    try:
+        access_token = iam_blueprint.token['access_token']
+    except Exception as e:
+        flash("Token expired, realod page.", 'warning')
+        return redirect(url_for('home'))
+
+    connection = None
+    cursor = None
+
+    sshkey = get_ssh_pub_key()
+
+    return render_template('ssh_keys.html', sshkey=sshkey)
+
+
+def get_ssh_pub_key():
+
+    # read database
+    try:
+        connection = getdbconnection()
+        cursor = connection.cursor()
+
+        query = ("SELECT sshkey FROM `users` WHERE `users`.`sub` = '{}'")
+        read_cmd = query.format(session['userid'])
+        cursor.execute(read_cmd)
+        r = cursor.fetchone()
+        if cursor.rowcount == 1:
+            sshkey = r[0]
+    except mysql.connector.Error as error:
+        logexception("Reading user table {}".format(error))
+    finally:
+        if connection is not None:
+            if connection.is_connected():
+                if cursor is not None:
+                    cursor.close()
+                connection.close()
+
+    return sshkey
+
+@app.route('/update_ssh_key/<subject>', methods=['POST'])
+def update_ssh_key(subject):
+    if not iam_blueprint.session.authorized:
+        return redirect(url_for('login'))
+
+    sshkey = request.form['sshkey']
+    if str(check_ssh_key(sshkey.encode())) != "0":
+        flash("Unvaild SSH public key. Please insert a correct one.", 'warning')
+        return redirect(url_for('ssh_keys'))
+
+    connection = None
+    cursor = None
+
+    # update database
+    try:
+        connection = getdbconnection()
+        cursor = connection.cursor()
+        update_query = ("UPDATE `users` SET `sshkey` = '{}' WHERE `sub` = '{}'")
+        update_cmd = update_query.format(sshkey, session['userid'])
+        cursor.execute(update_cmd)
+        connection.commit()
+    except mysql.connector.Error as error:
+        logexception("updating users table {}".format(error))
+    finally:
+        if connection is not None:
+            if connection.is_connected():
+                if cursor is not None:
+                    cursor.close()
+                connection.close()
+
+    return redirect(url_for('ssh_keys'))
+
+
+def check_ssh_key(key):
+
+    # credits to: https://gist.github.com/piyushbansal/5243418
+
+    import base64,struct,sys,binascii
+    array=key.split();
+
+    # Each rsa-ssh key has 3 different strings in it, first one being
+    # typeofkey second one being keystring third one being username .
+    if len(array) != 3:
+        return 1
+
+    typeofkey=array[0]
+    string=array[1]
+    username=array[2]
+
+    # must have only valid rsa-ssh key characters ie binascii characters 
+    try :
+        data=base64.decodestring(string)
+    except binascii.Error:
+        return 1
+
+    a=4
+    # unpack the contents of data, from data[:4] , it must be equal to 7 , property of ssh key .
+    try :
+        str_len = struct.unpack('>I', data[:a])[0]
+    except struct.error :
+        return 1
+
+    # data[4:11] must have string which matches with the typeofkey , another ssh key property.
+    if data[a:a+str_len] == typeofkey and int(str_len) == int(7): 
+        return 0
+    else:
+        return 1
+
+
+@app.route('/delete_ssh_key/<subject>')
+def delete_ssh_key(subject):
+    if not iam_blueprint.session.authorized:
+        return redirect(url_for('login'))
+
+    try:
+        access_token = iam_blueprint.token['access_token']
+
+    except Exception as e:
+        flash("Token expired, realod page.", 'warning')
+        return redirect(url_for('home'))
+
+    connection = None
+    cursor = None
+
+    # update database
+    try:
+        connection = getdbconnection()
+        cursor = connection.cursor()
+        update_query = ("UPDATE `users` SET `sshkey` = NULL WHERE `sub` = '{}'")
+        update_cmd = update_query.format(session['userid'])
+        cursor.execute(update_cmd)
+        connection.commit()
+    except mysql.connector.Error as error:
+        logexception("updating users table {}".format(error))
+    finally:
+        if connection is not None:
+            if connection.is_connected():
+                if cursor is not None:
+                    cursor.close()
+                connection.close()
+
+    privkey_key = session['userid'] + '/ssh_private_key'
+
+    delete_secret_from_vault(access_token, privkey_key)
+
+    return redirect(url_for('ssh_keys'))
+
+
+@app.route('/create_ssh_key/<subject>')
+def create_ssh_key(subject):
+    if not iam_blueprint.session.authorized:
+        return redirect(url_for('login'))
+
+    try:
+        access_token = iam_blueprint.token['access_token']
+
+    except Exception as e:
+        flash("Token expired, realod page.", 'warning')
+        return redirect(url_for('home'))
+
+    privkey, pubkey = generate_ssh_key()
+
+    privkey = privkey.decode("utf-8")
+
+    privkey = privkey.replace("\n", "\\n")
+
+    store_prikey_to_vault(access_token, privkey)
+
+    connection = None
+    cursor = None
+
+    # update database
+    try:
+        connection = getdbconnection()
+        cursor = connection.cursor()
+
+        update_query = ("UPDATE `users` SET `sshkey` = '{}' WHERE `sub` = '{}'")
+        update_cmd = update_query.format(pubkey.decode("utf-8"), session['userid'])
+        cursor.execute(update_cmd)
+        connection.commit()
+    except mysql.connector.Error as error:
+        logexception("updating users table {}".format(error))
+    finally:
+        if connection is not None:
+            if connection.is_connected():
+                if cursor is not None:
+                    cursor.close()
+                connection.close()
+
+    return redirect(url_for('ssh_keys'))
+
+def generate_ssh_key():
+
+    from cryptography.hazmat.primitives import serialization as crypto_serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.hazmat.backends import default_backend as crypto_default_backend
+    
+    key = rsa.generate_private_key(
+        backend=crypto_default_backend(),
+        public_exponent=65537,
+        key_size=2048
+    )
+    private_key = key.private_bytes(
+        crypto_serialization.Encoding.PEM,
+        crypto_serialization.PrivateFormat.PKCS8,
+        crypto_serialization.NoEncryption())
+    public_key = key.public_key().public_bytes(
+        crypto_serialization.Encoding.OpenSSH,
+        crypto_serialization.PublicFormat.OpenSSH
+    )
+
+    return private_key, public_key
+
+
+def store_prikey_to_vault(access_token, privkey_value):
+
+    vault = VaultIntegration(vault_url, iam_base_url, iam_client_id, iam_client_secret, vault_bound_audience, access_token, vault_secrets_path)
+
+    auth_token = vault.get_auth_token()
+
+    write_token = vault.get_token(auth_token, vault_write_policy, vault_write_token_time_duration, vault_wtite_token_renewal_time_duration)
+
+    secret_path = session['userid'] + '/ssh_private_key'
+    privkey_key = 'ssh_private_key'
+
+    response_output = vault.write_secret(write_token, secret_path, privkey_key, privkey_value)
+
+    vault.revoke_token(auth_token)
+
+    return response_output
+
+
+@app.route('/read_privkey_from_vault/<subject>')
+def read_privkey_from_vault(subject):
+    if not iam_blueprint.session.authorized:
+        return redirect(url_for('login'))
+
+    try:
+        access_token = iam_blueprint.token['access_token']
+
+    except Exception as e:
+        flash("Token expired, realod page.", 'warning')
+        return redirect(url_for('home'))
+
+
+    vault = VaultIntegration(vault_url, iam_base_url, iam_client_id, iam_client_secret, vault_bound_audience, access_token, vault_secrets_path)
+
+    auth_token = vault.get_auth_token()
+
+    read_token = vault.get_token(auth_token, vault_read_policy, vault_read_token_time_duration, vault_read_token_renewal_duration)
+
+    secret_path = session['userid'] + '/ssh_private_key'
+    privkey_key = 'ssh_private_key'
+
+    response_output = vault.read_secret(read_token, secret_path, privkey_key)
+
+    vault.revoke_token(auth_token)
+
+    return response_output

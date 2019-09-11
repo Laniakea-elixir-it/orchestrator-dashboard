@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container">
+
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-warning">
+        <strong>Warning!</strong> {{ message }}
+    </div>
+    <p></p>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <br>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h4 class="font-weight-bold text-primary">SSH keys management</h4>
+        </div>
+
+        <div class="card-body">
+
+            SSH keys allow you to establish a secure connection between your computer and Galaxy.
+
+            {% if sshkey is not none %}
+
+            <hr>
+            <div class="form-group">
+                <label for="ssh_public_key"><b>Your SSH key:</b></label>
+                <textarea class="form-control" rows="5" id="ssh_public_key" readonly>{{ sshkey }}</textarea>
+            </div>
+
+            <button type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#delete_confirm_{{session['userid']}}" data-backdrop="static" data-keyboard="false">
+                <span class="fas fa-trash-alt mr-2"></span>Delete
+            </button>
+            <!-- Modal DELETE -->
+            <div class="modal fade" id="delete_confirm_{{session['userid']}}" role="dialog">
+              <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="delete_confirm_label_{{session['userid']}}">Confirm SSH key pair deletion</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                  </div>
+                  <div class="modal-body">
+                    Do you really want to delete the SSH key pair ?
+                  </div>
+                  <div class="modal-footer">
+                    <a id="cancelBtn" class="btn btn-primary text-white" role="button" data-dismiss="modal">Cancel</a>
+                    <a id="deleteBtn" class="btn btn-danger text-white" role="button" onclick="location.href='{{ url_for('delete_ssh_key', subject=session['userid']) }}'">Delete SSH Key Pair</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <button type=button id="retrieveBtn" class="btn btn-sm btn-success" onclick="getVaultSSHPrivKey( href='{{ url_for('read_privkey_from_vault', subject=session['userid']) }}' )">
+                 <span class="fas fa-lock mr-2"></span> Retrieve SSH private key
+            </button>
+            <!-- Modal Retrieve luks passphrase-->
+            <div class="modal fade" id="newModal">
+              <div class="modal-dialog">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="get_ssh_priv_key_{{ session['userid'] }}">SSH Private Key</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                  </div>
+                  <div class="modal-body">
+                  <textarea id="SSHPrivateKey" rows="20" class="form-control"></textarea>
+                  </div>
+                  <div class="modal-footer">
+                    <a role="button" class="btn btn-secondary text-white" data-dismiss="modal">Close</a>
+                    <a role="button" class="btn btn-success text-white" onclick="copyToClipboard()" data-dismiss="modal"><span class="fas fa-copy"></span> Copy to clipboard</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {% else %}
+
+            <hr>
+            <form id="update_sshkey" action="{{ url_for('update_ssh_key', subject=session['userid']) }}" method="post">
+                <div class="form-group">
+                    <label for="update_ssh_public_key"><b>Upload SSH public key</b></label>
+                    <p>Paste your public SSH key, which is usually contained in the file '~/.ssh/id_ed25519.pub' or '~/.ssh/id_rsa.pub' and begins with 'ssh-ed25519' or 'ssh-rsa'. Don't use your private SSH key.</p>
+                    <textarea class="form-control" rows="5" id="update_ssh_public_key" name="sshkey"></textarea>
+                </div>
+                <button type="submit" class="btn btn-sm btn-primary"><span class="fas fa-download mr-2"></span> Upload</button>
+            </form>
+
+            <hr>
+            <label for="create_ssh_key_pair"><b>Create new key pair</b></label>
+            <p>
+            SSH key pair will be created from scratch. The private key will be stored on vault, while the public key will be stored on the Dashboard database, allowing the access to Galaxy.
+            </p>
+            <button id="createSSHKeyPair" class="btn btn-outline-success" onclick="location.href='{{ url_for('create_ssh_key', subject=session['userid']) }}'">
+                <span class="fas fa-plus mr-2"></span> Create new SSH key pair
+            </button>
+            <br>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+$(document).ready(function () {
+    $("#retrieveBtn").click(function () {
+        // add spinner to button
+        $(this).html( `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...` );
+        return true;
+    });
+});
+</script>
+
+<script>
+$(document).ready(function () {
+    $("#createSSHKeyPair").click(function () {
+        // add spinner to button
+        $(this).html( `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...` );
+        return true;
+    });
+});
+</script>
+
+<script>
+$(document).ready(function () {
+    $("#deleteBtn").click(function () {
+        // add spinner to button
+        $(this).parent().find(".cancelBtn").addClass("disabled", true);
+        $(this).addClass("disabled", true);
+        $(this).html( `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...` );
+    });
+});
+</script>
+
+<script>
+function copyToClipboard() {
+  var copyText = document.getElementById("SSHPrivateKey");
+  copyText.select();
+  document.execCommand("copy");
+}
+</script>
+
+<script>
+
+async function getVaultSSHPrivKey(url)
+{
+  let secret = "secret placeholder";
+
+  let  response = await fetch(url)
+  let result = await response;
+  secret = await response.text();
+
+  fillModal(secret);
+  stopSpinner();
+};
+
+function fillModal(secret)
+{
+    $(document).ready(function(){
+      $("#newModal").on('show.bs.modal', function () {
+        var modal = $(this)
+        modal.find('.modal-body textarea').val( secret );
+      });
+      $("#newModal").modal("show");
+    });
+}
+
+function stopSpinner()
+{
+  $("#retrieveBtn").html( `<span class="fas fa-lock mr-2"></span>Retrieve SSH private key` );
+}
+</script>
+
+{% endblock %}

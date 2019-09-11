@@ -16,6 +16,36 @@
     {% endwith %}
 
     <br>
+    {% if ssh_pub_key is none  %}
+    <!-- Modal -->
+        <div class="modal fade" id="sshPopupModal" tabindex="-1" role="dialog" aria-labelledby="sshPopupModalLabel" aria-hidden="true">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="sshPopupModalLabel">No SSH public key provided</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+              <p>SSH keys allow you to establish a secure connection between your computer and the Galaxy virtual machine. At least one public key has to be provided mandatorily.</p>
+              <hr>
+              <p>To create a new ssh key pair or upload your public key, please go <a href="{{ url_for("ssh_keys") }}">here</a></p>
+              <p>You can still provide a key in the dedicated field of the form.</p>
+              <p>For more information, please visit our <a href="https://laniakea.readthedocs.io/en/latest/qs_key_pair.html" target="_blank">documentation page</a>.</p>
+              </div>
+              <div class="modal-footer">
+                  <div class="d-flex flex-grow-1 justify-content-start custom-control custom-checkbox">
+                      <input type="checkbox" class="custom-control-input" id="popupMaintenanceCheckbox" name="checkbox-maintenance"/>
+                      <label class="custom-control-label checkbox-maintenance" for="popupMaintenanceCheckbox">Don't show me again</label>
+                  </div>
+                  <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+    {% endif  %}
+    
     <div class="card shadow mb-4">
         <div class="card-header py-3">
             <h4 class="font-weight-bold text-primary">
@@ -31,7 +61,7 @@
             <form id="depSubmit" action="{{ url_for('createdep', template=selectedTemplate) }}" method="post">
                 <div class="form-group">
                     <label for="additional_description">Instance description</label>
-                    <input type="text" class="form-control" id="additional_description" name="additional_description" placeholder="Instance description" value="" required>
+                    <input type="text" class="form-control" id="additional_description" name="additional_description" placeholder="Instance description" value="" maxlength="20" required>
                 </div>
             {% if template['enable_config_form'] is defined and template['enable_config_form'] is sameas true %}
                 {% include 'config_form.html' %}
@@ -56,6 +86,7 @@
 <script>
 $(document).ready(function() {
     $('.js-example-basic-single').select2({
+      //tags: true,
       width: '100%' // https://github.com/select2/select2/issues/4220
     });
 });
@@ -98,4 +129,21 @@ $(document).ready(function () {
 //    $('#selectSLA').attr('disabled',!this.checked)
 //});
 </script>
+
+{% if ssh_pub_key is none  %}
+<script type="text/javascript">
+    if (!localStorage.DoNotShowMessageAgain || localStorage.DoNotShowMessageAgain != "true") {
+    $(window).on('load',function(){
+        $('#sshPopupModal').modal('show');
+    });
+};
+
+$('#popupMaintenanceCheckbox').click(function(){
+    if ($('#popupMaintenanceCheckbox').attr('checked', true)) {
+        localStorage.DoNotShowMessageAgain = "true";
+    }
+}); 
+</script>
+{% endif  %}
+
 {% endblock %}

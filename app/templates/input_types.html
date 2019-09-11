@@ -12,7 +12,7 @@
 
     <!-- text type -->
     {% if value.tag_type == "text" %}
-      <input type="text" class="form-control" id="{{key}}" name="{{key}}" value="{{value.default}}" aria-describedby="help{{key}}" {% if value.required %}required{%endif%} />
+      <input type="text" class="form-control" id="{{key}}" name="{{key}}" value="{{value.default}}" aria-describedby="help{{key}}" placeholder="{{value.placeholder}}" {% if value.required %}required{%endif%} />
     <!-- end select type -->
 
     <!-- hidden text type -->
@@ -59,6 +59,11 @@
       </div>
       {% endfor %}
     <!-- end toggle type -->
+
+    <!-- ssh special input field -->
+    {% elif value.tag_type == "ssh_pub_key_type" %}
+      <input type="text" class="form-control" id="{{key}}" name="{{key}}" value="{{value.default}}" aria-describedby="help{{key}}" {% if ssh_pub_key is not none %}placeholder="{{value.placeholder}}"{% endif %} {% if ssh_pub_key is none %}required{% endif %} />
+    <!-- end select type -->
 
     {% endif %} <!-- end tag type if -->
 

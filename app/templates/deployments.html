@@ -37,12 +37,11 @@
     <!--Table head-->
       <thead>
         <tr>
-          <th>Instance identifier</th>
+          <th>Instance name</th>
           <th>Status</th>
-          <th>Description</th>
           <th>Creation time</th>
-          <!--th>Updated At</th-->
-          <!--th>Deployed At</th-->
+          <th>Galaxy flavour</th>
+          <th>VM flavour</th>
           <th>Endpoint</th>
           <th>Actions</th>
         </tr>
@@ -55,7 +54,7 @@
              {% set ar.found = true %}
         {% endif %}
         <tr>
-            <th scope="row"><a href="{{ url_for('depoutput', depid=deployment.uuid) }}">{{deployment.uuid}}</a></th>
+            <th scope="row"><a href="{{ url_for('depoutput', depid=deployment.uuid) }}">{{deployment.additionaldescription}}</a></th>
             <td>
             {% if "COMPLETE" in deployment.status %}
             <span class="badge badge-success"/>
@@ -65,10 +64,14 @@
             <span class="badge badge-warning text-white"><span class="spinner-grow spinner-grow-sm"></span>
             {% endif %}
             {{deployment.status}}</td>
-            <td>{{deployment.additionaldescription}}</td>
             <td>{{deployment.creationTime}}</td>
-            <!--td>{{deployment.updateTime}}</td-->
-            <!--td>{{deployment.cloudProviderName}}</td-->
+            <td>{{inputs[deployment.uuid]['galaxy_flavor']}}</td>
+            {% if inputs[deployment.uuid]['infra_config'] == 'cluster'  %}
+            <td><span class="badge badge-pill badge-primary">cluster</span></td>
+            {% else %}
+            <td><span class="badge badge-pill badge-info">{{inputs[deployment.uuid]['instance_flavor']['fe']}}</span></td>
+            {% endif %}
+            </td>
             <td><a href="{{deployment.endpoint}}" target="_blank">{{deployment.endpoint}}</a></td>
             <td>
               <div class="btn-group">
@@ -95,7 +98,7 @@
                 <button type="button" class="close" data-dismiss="modal">&times;</button>
               </div>
               <div class="modal-body">
-                Do you really want to delete the deployment {{deployment.uuid}}?
+                Do you really want to delete the deployment "{{deployment.additionaldescription}}" ?
               </div>
               <div class="modal-footer">
                         <a id="cancelBtn" class="btn btn-primary text-white" role="button" data-dismiss="modal">Cancel</a>
@@ -137,7 +140,7 @@ $(document).ready(function () {
             "targets"  : 'no-sort',
             "orderable": false,
          }],
-        "order": [[ 3, "desc" ]]
+        "order": [[ 2, "desc" ]]
     });
 </script>
 
