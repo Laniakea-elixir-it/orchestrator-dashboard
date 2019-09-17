@@ -1,6 +1,7 @@
 from app import app, iam_blueprint, iam_base_url, mail
 from flask import json, render_template, request, redirect, url_for, flash, session, make_response
 from flask_mail import Message
+from threading import Thread
 import requests
 import json
 import datetime
@@ -746,20 +747,22 @@ def showdeployments():
             dep = get_deployment(depid)
 
             inputs[depid] = {
-                             "galaxy_flavor": dep['inputs']['flavor'],
+                             "galaxy_flavor": "",
                              "infra_config": "single_vm",
                              "instance_flavor": {
                                                  "fe": "",
                                                  "wn": ""
                                                 },
                             }
-            
+
             if 'instance_flavor' in dep['inputs']:
                 inputs[depid]['instance_flavor']['fe'] = dep['inputs']['instance_flavor']
             elif 'fe_instance_flavor' in dep['inputs']:
                 inputs[depid]['infra_config'] = 'cluster'
                 inputs[depid]['instance_flavor']['fe'] = dep['inputs']['fe_instance_flavor']
                 inputs[depid]['instance_flavor']['wn'] = dep['inputs']['wn_instance_flavor']
+
+            if 'flavor' in dep['inputs']: inputs[depid]['galaxy_flavor'] = dep['inputs']['flavor']
 
         return render_template('deployments.html', deployments=deployments, inputs=inputs)
     except Exception as error:
@@ -1006,7 +1009,7 @@ def createdep():
                 inputs['vault_wrapping_token'] = create_vault_wrapping_token(access_token)
                 inputs['vault_secret_path'] = session['userid'] + '/' + vault_secret_uuid
 
-            if inputs['instance_key_pub'] == '':
+            if 'instance_key_pub' in inputs and inputs['instance_key_pub'] == '':
                 inputs['instance_key_pub'] = get_ssh_pub_key() 
 
             app.logger.debug("Parameters: " + json.dumps(inputs))
@@ -1178,17 +1181,18 @@ def callback():
     if user_email != '' and rf == 1:
         mail_sender = app.config['MAIL_SENDER']
         if status == 'CREATE_COMPLETE':
-            msg = Message("Deployment complete",
-                          sender=mail_sender,
-                          recipients=[user_email])
-            msg.body = "Your deployment request with uuid: {} has been successfully completed.".format(uuid)
+            email_recipients = [user_email]
+            instance_admin_email = user_email
+            if 'admin_email' in dep['inputs'] and user_email != dep['inputs']['admin_email']:
+                email_recipients.append(dep['inputs']['admin_email'])
+                instance_admin_email = dep['inputs']['admin_email']
             try:
-                mail.send(msg)
+                send_success_email(mail_sender, email_recipients, instance_admin_email, endpoint)
             except Exception as error:
                 logexception("sending email:".format(error))
 
         if status == 'CREATE_FAILED':
-            msg = Message("Deployment failed",
+            msg = Message("[Laniakea] Your deployment failed.",
                           sender=mail_sender,
                           recipients=[user_email])
             msg.body = "Your deployment request with uuid: {} has failed.".format(uuid)
@@ -1202,6 +1206,26 @@ def callback():
     resp.mimetype = 'application/json'
 
     return resp
+
+
+def send_success_email(mail_sender, email_recipients, instance_admin_email, endpoint):
+    send_email("[Laniakea] Your Galaxy is ready.",
+               sender=mail_sender,
+               recipients=email_recipients,
+               html_body=render_template('email/success_email.html',
+                                         endpoint=endpoint,
+                                         user=instance_admin_email))
+
+
+def send_async_email(app, msg):
+    with app.app_context():
+        mail.send(msg)
+
+
+def send_email(subject, sender, recipients, html_body):
+    msg = Message(subject, sender=sender, recipients=recipients)
+    msg.html = html_body
+    Thread(target=send_async_email, args=(app, msg)).start()
 
 
 @app.route('/read_secret_from_vault/<depid>')
