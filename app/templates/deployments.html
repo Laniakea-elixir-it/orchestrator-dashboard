@@ -4,17 +4,7 @@
 
 <div class="container-fluid">
 {% set ar = namespace(found=false) %}
-{% with messages = get_flashed_messages() %}
-{% if messages %}
-{% for message in messages %}
-<div class="alert alert-warning">
-  <strong>Warning!</strong> {{ message }}
-</div>
-<p></p>
-{% endfor %}
-{% endif %}
-{% endwith %}
-
+{% include 'flashed_messages.html' %}
   <br>
     <div class="card shadow mb-4">
         <div class="card-header py-3">
@@ -85,6 +75,7 @@
                 <div class="dropdown-menu">
                   <a class="dropdown-item" href="{{ url_for('depoutput', depid=deployment.uuid) }}"><span class="fas fa-bars mr-2 grey-text"></span>Details</a>
                   <a class="dropdown-item" href="{{ url_for('deptemplate', depid=deployment.uuid) }}"><span class="fas fa-search mr-2 grey-text"></span>Show template</a>
+                  <a class="dropdown-item {% if deployment.physicalId is not defined %}disabled{% endif %}" href="{{ url_for('deplog', physicalId=deployment.physicalId) }}"><span class="fas fa-file-alt mr-2 grey-text"></span>Log</a>
               </div>
             </td>
         </tr>

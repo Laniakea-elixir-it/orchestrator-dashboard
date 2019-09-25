@@ -31,7 +31,8 @@ Create the `config.json` file (see the [example](app/config-sample.json)):
     "ORCHESTRATOR_URL": "https://indigo-paas.cloud.ba.infn.it/orchestrator",
     "TOSCA_TEMPLATES_DIR": "/opt/tosca-templates",
     "SLAM_URL": "https://indigo-slam.cloud.ba.infn.it:8443",
-    "CMDB_URL": "https://indigo-paas.cloud.ba.infn.it/cmdb"
+    "CMDB_URL": "https://indigo-paas.cloud.ba.infn.it/cmdb",
+    "IM_URL": "https://indigo-paas.cloud.ba.infn.it/im",
 }
 ````
 Clone the tosca-templates repository to get a set of tosca templates that the dashboard will load, e.g.:
@@ -133,7 +134,7 @@ git clone https://github.com/maricaantonacci/orchestrator-dashboard.git
 cd orchestrator-dashboard
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 ```
 
 Start the dashboard app:

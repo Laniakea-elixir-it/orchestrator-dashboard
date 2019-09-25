@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
-app.secret_key="this.is.my.secretkey"
+app.secret_key="30bb7cf2-1fef-4d26-83f0-8096b6dcc7a3"
 app.config.from_json('config.json')
 
 iam_base_url=app.config['IAM_BASE_URL']
@@ -31,7 +31,7 @@ app.register_blueprint(iam_blueprint, url_prefix="/login")
 
 mail = Mail(app)
 
-from app import routes
+from app import routes, errors
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0')

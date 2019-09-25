@@ -1070,7 +1070,6 @@ def create_vault_wrapping_token(access_token):
 def logout():
     session.clear()
     iam_blueprint.session.get("/logout")
-    #   del iam_blueprint.session.token
     return redirect(url_for('login'))
 
 
