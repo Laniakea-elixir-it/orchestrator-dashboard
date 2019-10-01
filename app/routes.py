@@ -97,9 +97,6 @@ for tosca in toscaTemplates:
                for k,v in template['metadata'].items():
                    toscaInfo[tosca]["metadata"][k] = v
 
-               if 'icon' not in template['metadata']:
-                   toscaInfo[tosca]["metadata"]['icon'] = "xxxx"
-
             if tosca_metadata_dir:
                 tosca_metadata_path = tosca_metadata_dir + "/"
                 for mpath, msubs, mnames in os.walk(tosca_metadata_path):
@@ -116,9 +113,6 @@ for tosca in toscaTemplates:
                                         for k,v in metadata_template['metadata'].items():
                                             toscaInfo[tosca]["metadata"][k] = v
                              
-                                        if 'icon' not in metadata_template['metadata']:
-                                            toscaInfo[tosca]["metadata"]['icon'] = "xxxx"
-
             if 'inputs' in template['topology_template']:
                toscaInfo[tosca]['inputs'] = template['topology_template']['inputs']
 
