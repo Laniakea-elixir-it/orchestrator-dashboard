@@ -909,6 +909,9 @@ def configure():
 
     selected_tosca = request.args['selected_tosca']
 
+    if 'admin_email' in toscaInfo[selected_tosca]['inputs']:
+        toscaInfo[selected_tosca]['inputs']['admin_email']['default'] = session['useremail']
+
     slas = sla.get_slas(access_token)
 
     ssh_pub_key =  get_ssh_pub_key()
