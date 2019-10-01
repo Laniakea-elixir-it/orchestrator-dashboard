@@ -21,14 +21,8 @@
                         </div>
                         <div class="wrapper">
                             <img class="card-img-bottom img-fluid" src="{{tosca['metadata']['icon']}}" alt="Pinned cards">
-                            {% if tosca['metadata']['virtualization_type'] is defined %}
-                            {% if tosca['metadata']['virtualization_type'] == 'Express' %}
-                            <div class="corner-ribbon bottom-right sticky blue shadow">{{tosca['metadata']['virtualization_type']}}</div>
-                            {% elif tosca['metadata']['virtualization_type'] == 'Docker' %}
-                            <div class="corner-ribbon bottom-right sticky red shadow">{{tosca['metadata']['virtualization_type']}}</div>
-                            {% elif tosca['metadata']['virtualization_type'] == 'Live build' %}
-                            <div class="corner-ribbon bottom-right sticky green shadow">{{tosca['metadata']['virtualization_type']}}</div>
-                            {% endif %}
+                            {% if tosca['metadata']['ribbon'] is defined and tosca['metadata']['ribbon'] is sameas true %}
+                            <div class="corner-ribbon bottom-right sticky {{tosca['metadata']['ribbon_color']}} shadow">{{tosca['metadata']['ribbon_tag']}}</div>
                             {% endif %}
                         </div>
                         <div class="card-img-overlay text-center">
@@ -77,14 +71,8 @@
             </div>
             <div class="wrapper">
                 <img class="card-img-bottom img-fluid" src="{{tosca['metadata']['icon']}}" alt="Card image cap">
-                {% if tosca['metadata']['virtualization_type'] is defined %}
-                {% if tosca['metadata']['virtualization_type'] == 'Express' %}
-                <div class="corner-ribbon bottom-right sticky blue shadow">{{tosca['metadata']['virtualization_type']}}</div>
-                {% elif tosca['metadata']['virtualization_type'] == 'Docker' %}
-                <div class="corner-ribbon bottom-right sticky red shadow">{{tosca['metadata']['virtualization_type']}}</div>
-                {% elif tosca['metadata']['virtualization_type'] == 'Live build' %}
-                <div class="corner-ribbon bottom-right sticky green shadow">{{tosca['metadata']['virtualization_type']}}</div>
-                {% endif %}
+                {% if tosca['metadata']['ribbon'] is defined and tosca['metadata']['ribbon'] is sameas true %}
+                <div class="corner-ribbon bottom-right sticky {{tosca['metadata']['ribbon_color']}} shadow">{{tosca['metadata']['ribbon_tag']}}</div>
                 {% endif %}
             </div>
             <div class="card-img-overlay text-center">
