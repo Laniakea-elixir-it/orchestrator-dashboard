@@ -174,7 +174,12 @@ def authorized_with_valid_token(f):
 @app.route('/settings')
 @authorized_with_valid_token
 def show_settings():
-    return render_template('settings.html', orchestrator_url=orchestratorUrl, iam_url=iam_base_url)
+
+    return render_template('settings.html',
+                           orchestrator_url=orchestratorUrl,
+                           iam_url=iam_base_url,
+                           im_url=imUrl,
+                           vault_url=vault_url)
 
 
 @app.route('/deployments/<subject>')
