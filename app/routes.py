@@ -1152,8 +1152,8 @@ def callback():
         app.logger.info("Deployment with uuid:{} not found!".format(uuid))
 
     # send email to user
-    if user_email != '' and rf == 1:
-        mail_sender = app.config['MAIL_SENDER']
+    mail_sender = app.config.get('MAIL_SENDER')
+    if mail_sender and user_email != '' and rf == 1:
         if status == 'CREATE_COMPLETE':
             email_recipients = [user_email]
             instance_admin_email = user_email
