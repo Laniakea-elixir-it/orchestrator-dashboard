@@ -7,3 +7,4 @@ Flask-Mail==0.9.1
 mysql-connector==2.2.9
 python-dateutil==2.8.0
 cryptography==2.7
+packaging==19.2
