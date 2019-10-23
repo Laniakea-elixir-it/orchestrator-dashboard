@@ -2,6 +2,7 @@ from app import app, iam_blueprint, sla as sla, mail, settings, utils
 from werkzeug.exceptions import Forbidden
 from flask import json, render_template, request, redirect, url_for, flash, session, make_response
 from flask_mail import Message
+from threading import Thread
 import requests
 import json
 import datetime
@@ -649,12 +650,33 @@ def showdeployments():
         deployments = updatedeploymentsstatus(deployments, session['userid'])
         app.logger.debug("Deployments: " + str(deployments))
 
+        inputs={}
         deployments_uuid_array=[]
         for deployment in deployments:
             deployments_uuid_array.append(deployment['uuid'])
+            depid = deployment['uuid']
+            dep = get_deployment(depid)
+
+            inputs[depid] = {
+                             "galaxy_flavor": "",
+                             "infra_config": "single_vm",
+                             "instance_flavor": {
+                                                 "fe": "",
+                                                 "wn": ""
+                                                },
+                            }
+
+            if 'instance_flavor' in dep['inputs']:
+                inputs[depid]['instance_flavor']['fe'] = dep['inputs']['instance_flavor']
+            elif 'fe_instance_flavor' in dep['inputs']:
+                inputs[depid]['infra_config'] = 'cluster'
+                inputs[depid]['instance_flavor']['fe'] = dep['inputs']['fe_instance_flavor']
+                inputs[depid]['instance_flavor']['wn'] = dep['inputs']['wn_instance_flavor']
+
+            if 'flavor' in dep['inputs']: inputs[depid]['galaxy_flavor'] = dep['inputs']['flavor']
         session['deployments_uuid_array'] = deployments_uuid_array
 
-    return render_template('deployments.html', deployments=deployments)
+    return render_template('deployments.html', deployments=deployments, inputs=inputs)
 
 
 @app.route('/template/<depid>')
@@ -699,11 +721,65 @@ def depoutput(depid=None):
         inp = dep[
             'inputs']  # we keep this as json, to retrieve info to enable passphrase recovery from vault only for those deployment has storage_encryption enabled
         links = json.dumps(dep['links'])
+
+        volume_state = dep['storage_encryption']
+        if volume_state == 1:
+          volume_state = encrypted_volume_status(depid)
+
+        endpoint_state = str( is_endpoint_online(depid) )
+
         return render_template('depoutput.html',
                                deployment=dep,
+                               volume_state=volume_state,
+                               endpoint_state=endpoint_state,
                                inputs=inp,
                                outputs=output,
                                links=links)
+
+
+def encrypted_volume_status(depid=None):
+    # retrieve deployment from DB
+    dep = get_deployment(depid)
+    if dep == {}:
+        return redirect(url_for('home'))
+    else:
+
+        if 'node_ip' in dep['outputs']:
+            api_status = 'https://' + dep['outputs']['node_ip'] + ':5000/luksctl_api/v1.0/status'
+        elif 'cluster_ip' in dep['outputs']:
+            api_status = 'https://' + dep['outputs']['cluster_ip'] + ':5000/luksctl_api/v1.0/status'
+        else:
+            return 'unavailable'
+
+        try:
+            response = requests.get(api_status, verify=False)
+        except:
+            return 'unavailable'
+
+        deserialized_response = json.loads(response.text)
+        return deserialized_response['volume_state']
+
+
+
+def is_endpoint_online(depid=None):
+    # retrieve deployment from DB
+    dep = get_deployment(depid)
+    if dep == {}:
+        return redirect(url_for('home'))
+    else:
+
+        if 'endpoint' in dep['outputs']:
+            endpoint = dep['outputs']['endpoint'] + '/'
+            try:
+              response = requests.get(endpoint, verify=False)
+            except:
+              return 'unavailable'
+
+            return response.status_code
+
+        else:
+
+            return 'Unavailable'
 
 
 @app.route('/templatedb/<depid>')
@@ -777,6 +853,9 @@ def configure():
     access_token = iam_blueprint.session.token['access_token']
 
     selected_tosca = request.args['selected_tosca']
+
+    if 'admin_email' in toscaInfo[selected_tosca]['inputs']:
+        toscaInfo[selected_tosca]['inputs']['admin_email']['default'] = session['useremail']
 
     slas = sla.get_slas(access_token, settings.orchestratorConf['slam_url'], settings.orchestratorConf['cdb_url'])
 
@@ -1023,17 +1102,18 @@ def callback():
     mail_sender = app.config.get('MAIL_SENDER')
     if mail_sender and user_email != '' and rf == 1:
         if status == 'CREATE_COMPLETE':
-            msg = Message("Deployment complete",
-                          sender=mail_sender,
-                          recipients=[user_email])
-            msg.body = "Your deployment request with uuid: {} has been successfully completed.".format(uuid)
+            email_recipients = [user_email]
+            instance_admin_email = user_email
+            if 'admin_email' in dep['inputs'] and user_email != dep['inputs']['admin_email']:
+                email_recipients.append(dep['inputs']['admin_email'])
+                instance_admin_email = dep['inputs']['admin_email']
             try:
-                mail.send(msg)
+                send_success_email(mail_sender, email_recipients, instance_admin_email, endpoint)
             except Exception as error:
                 logexception("sending email:".format(error))
 
         if status == 'CREATE_FAILED':
-            msg = Message("Deployment failed",
+            msg = Message("[Laniakea] Your deployment failed.",
                           sender=mail_sender,
                           recipients=[user_email])
             msg.body = "Your deployment request with uuid: {} has failed.".format(uuid)
@@ -1047,6 +1127,26 @@ def callback():
     resp.mimetype = 'application/json'
 
     return resp
+
+
+def send_success_email(mail_sender, email_recipients, instance_admin_email, endpoint):
+    send_email("[Laniakea] Your Galaxy is ready.",
+               sender=mail_sender,
+               recipients=email_recipients,
+               html_body=render_template('email/success_email.html',
+                                         endpoint=endpoint,
+                                         user=instance_admin_email))
+
+
+def send_async_email(app, msg):
+    with app.app_context():
+        mail.send(msg)
+
+
+def send_email(subject, sender, recipients, html_body):
+    msg = Message(subject, sender=sender, recipients=recipients)
+    msg.html = html_body
+    Thread(target=send_async_email, args=(app, msg)).start()
 
 
 @app.route('/read_secret_from_vault/<depid>')
@@ -1077,6 +1177,81 @@ def read_secret_from_vault(depid=None):
         vault.revoke_token(auth_token)
 
         return response_output
+
+
+@app.route('/encrypted_volume_open/<depid>')
+@authorized_with_valid_token 
+def encrypted_volume_open(depid=None):
+
+    access_token = iam_blueprint.session.token['access_token']
+
+    # retrieve deployment from DB
+    dep = get_deployment(depid)
+    if dep == {}:
+        return redirect(url_for('home'))
+    else:
+
+        vault = VaultIntegration(vault_url, iam_base_url, iam_client_id, iam_client_secret, vault_bound_audience,
+                                 access_token, vault_secrets_path)
+
+        auth_token = vault.get_auth_token()
+
+        wrapping_read_token = vault.get_wrapping_token('20m', auth_token, 'read_only', '20m', '20m')
+
+        # retrieval of secret_path and secret_key from the db goes here
+        secret_path = session['userid'] + "/" + dep['vault_secret_uuid']
+        user_key = dep['vault_secret_key']
+
+        payload = {
+                "vault_url": vault_url,
+                "vault_token": wrapping_read_token,
+                "secret_root": vault_secrets_path,
+                "secret_path": secret_path,
+                "secret_key": user_key
+               }
+
+        if 'node_ip' in dep['outputs']:
+            api_open = 'https://' + dep['outputs']['node_ip'] + ':5000/luksctl_api/v1.0/open'
+        elif 'cluster_ip' in dep['outputs']:
+            api_open = 'https://' + dep['outputs']['cluster_ip'] + ':5000/luksctl_api/v1.0/open'
+        else:
+            return 'unavailable'
+
+        response = requests.post(api_open, json=payload, verify=False)
+
+        deserialized_response = json.loads(response.text)
+
+        return deserialized_response['volume_state']
+
+
+@app.route('/galaxy_startup/<depid>')
+@authorized_with_valid_token 
+def galaxy_startup(depid=None):
+
+    access_token = iam_blueprint.session.token['access_token']
+
+    # retrieve deployment from DB
+    dep = get_deployment(depid)
+    if dep == {}:
+        return redirect(url_for('home'))
+    else:
+
+        payload = {
+                "endpoint": dep['outputs']['endpoint']
+               }
+
+        if 'node_ip' in dep['outputs']:
+            api_startup = 'http://' + dep['outputs']['node_ip'] + ':5001/galaxyctl_api/v1.0/galaxy-startup'
+        elif 'cluster_ip' in dep['outputs']:
+            api_startup = 'http://' + dep['outputs']['cluster_ip'] + ':5001/galaxyctl_api/v1.0/galaxy-startup'
+        else:
+            return 'unavailable'
+
+        response = requests.post(api_startup, json=payload, verify=False)
+
+        deserialized_response = json.loads(response.text)
+
+        return deserialized_response['galaxy']
 
 
 @app.route('/ssh_keys')

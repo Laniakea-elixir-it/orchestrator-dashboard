@@ -1,4 +1,4 @@
-CREATE DATABASE  IF NOT EXISTS `orchestrator_dashboard`
+CREATE DATABASE  IF NOT EXISTS `orchestrator_dashboard`;
 USE `orchestrator_dashboard`;
 
 --
@@ -49,6 +49,7 @@ CREATE TABLE `users` (
   `picture` varchar(128) DEFAULT NULL,
   `role` varchar(32) DEFAULT 'user',
   `active` tinyint(1) DEFAULT '1',
+  `sshkey` varchar(2048) DEFAULT NULL,
   PRIMARY KEY (`sub`)
 );
 

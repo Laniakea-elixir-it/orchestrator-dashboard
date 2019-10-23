@@ -22,7 +22,7 @@
 
     <!-- email type -->
     {% elif value.tag_type == "email" %}
-      <input type="email" class="form-control" id="{{key}}" name="{{key}}" placeholder="Enter your email" {% if value.required %}required{%endif%} >
+      <input type="email" class="form-control" id="{{key}}" name="{{key}}" value="{{ template['inputs']['admin_email']['default'] }}" {% if value.required %}required{%endif%} >
     <!-- end email type -->
 
     <!-- password type -->

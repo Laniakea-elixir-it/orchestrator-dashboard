@@ -52,7 +52,7 @@
             <form id="depSubmit" action="{{ url_for('createdep', template=selectedTemplate) }}" method="post">
                 <div class="form-group">
                     <label for="additional_description">Instance description</label>
-                    <input type="text" class="form-control" id="additional_description" name="additional_description" placeholder="Instance description" value="" required>
+                    <input type="text" class="form-control" id="additional_description" name="additional_description" placeholder="Instance description" value="" maxlength="20" required>
                 </div>
             {% if template['enable_config_form'] is defined and template['enable_config_form'] is sameas true %}
                 {% include 'config_form.html' %}
@@ -77,6 +77,7 @@
 <script>
 $(document).ready(function() {
     $('.js-example-basic-single').select2({
+      //tags: true,
       width: '100%' // https://github.com/select2/select2/issues/4220
     });
 });
