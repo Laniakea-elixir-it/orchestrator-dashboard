@@ -669,10 +669,16 @@ def showdeployments():
 
             if 'instance_flavor' in dep['inputs']:
                 inputs[depid]['instance_flavor']['fe'] = dep['inputs']['instance_flavor']
-            elif 'fe_instance_flavor' in dep['inputs']:
+            elif 'num_cpus' in dep['inputs'] and 'mem_size' in dep['inputs']:
+                inputs[depid]['instance_flavor']['fe'] = "CPUs: " + dep['inputs']['num_cpus'] + " - RAM: " +  dep['inputs']['mem_size']
+            elif 'instance_flavor_fe' in dep['inputs']:
                 inputs[depid]['infra_config'] = 'cluster'
-                inputs[depid]['instance_flavor']['fe'] = dep['inputs']['fe_instance_flavor']
-                inputs[depid]['instance_flavor']['wn'] = dep['inputs']['wn_instance_flavor']
+                inputs[depid]['instance_flavor']['fe'] = dep['inputs']['instance_flavor_fe']
+                inputs[depid]['instance_flavor']['wn'] = dep['inputs']['instance_flavor_wn']
+            elif 'fe_cpus' in dep['inputs'] and 'fe_mem' in dep['inputs'] and 'wn_cpus' in dep['inputs'] and 'wn_mem' in dep['inputs']     :
+                inputs[depid]['infra_config'] = 'cluster'
+                inputs[depid]['instance_flavor']['fe'] = "CPUs: " + dep['inputs']['fe_cpus'] + " - RAM: " +  dep['inputs']['wn_mem']
+                inputs[depid]['instance_flavor']['wn'] = "CPUs: " + dep['inputs']['wn_cpus'] + " - RAM: " +  dep['inputs']['wn_mem']
 
             if 'flavor' in dep['inputs']: inputs[depid]['galaxy_flavor'] = dep['inputs']['flavor']
         session['deployments_uuid_array'] = deployments_uuid_array
