@@ -11,6 +11,7 @@ import io
 import os
 import linecache
 import sys
+import ast
 from fnmatch import fnmatch
 from hashlib import md5
 from functools import wraps
@@ -937,6 +938,18 @@ def createdep():
 
         if 'instance_key_pub' in inputs and inputs['instance_key_pub'] == '':
             inputs['instance_key_pub'] = get_ssh_pub_key()
+
+        if 'instance_flavor_fe' in inputs and not 'instance_flavor_fe' in template:
+          fe_flv_dict = ast.literal_eval(inputs['instance_flavor_fe'])
+          for key, value in fe_flv_dict.items():
+            inputs[key]=value
+          del inputs['instance_flavor_fe']
+
+        if 'instance_flavor_wn' in inputs and not 'instance_flavor_wn' in template:
+          wn_flv_dict = ast.literal_eval(inputs['instance_flavor_wn']) 
+          for key, value in wn_flv_dict.items():
+            inputs[key]=value
+          del inputs['instance_flavor_wn']
 
         app.logger.debug("Parameters: " + json.dumps(inputs))
 
