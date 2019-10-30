@@ -81,7 +81,7 @@
 			<a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">External Links</a>
                         <div class="dropdown-menu">
 			    {% for link in session["external_links"] %}
-			      <a class="dropdown-item" href="{{ link.url }}">{{link.menu_item_name}}</a>
+			      <a class="dropdown-item" href="{{ link.url }}" target="blank">{{link.menu_item_name}}</a>
 			    {% endfor %}
                         </div>
                     </li>
@@ -110,5 +110,6 @@
         </div>
     </nav>
     {% block content %}{% endblock %}
+    {% include 'footer.html' %}
 </body>
 </html>
