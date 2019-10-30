@@ -45,7 +45,7 @@ def getdbconnection():
     return cnx
 
 toscaTemplates = utils.loadToscaTemplates(settings.toscaDir)
-toscaInfo = utils.extractToscaInfo(settings.toscaDir,settings.toscaParamsDir,toscaTemplates,settings.toscaMetadataDir)
+toscaInfo, sortedToscas = utils.extractToscaInfo(settings.toscaDir,settings.toscaParamsDir,toscaTemplates,settings.toscaMetadataDir)
 
 app.logger.debug("TOSCA INFO: " + json.dumps(toscaInfo))
 app.logger.debug("EXTERNAL_LINKS: " + json.dumps(settings.external_links) )
@@ -629,7 +629,7 @@ def home():
                         cursor.close()
                     connection.close()
 
-        return render_template('portfolio.html', templates=toscaInfo)
+        return render_template('portfolio.html', templates=toscaInfo, sorted_dict=sortedToscas)
 
 
 @app.route('/deployments')

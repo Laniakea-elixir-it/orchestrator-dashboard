@@ -56,8 +56,12 @@
       <input id="cardFilter" class="form-control py-2 border" type="text" onkeyup="cardFilter()" placeholder="Search...">
     </div>
 
+ {% for sorted_tosca_filename in sorted_dict %}
+ {% set outer_loop = loop %}
  {% for tosca_filename, tosca in templates.items() %}
-    {% if loop.index % 3 == 1 %}
+ {% if tosca_filename == sorted_tosca_filename %}
+
+    {% if outer_loop.index % 3 == 1 %}
     <div class="card-deck">
     {% endif %}
 
@@ -86,9 +90,13 @@
                 <a href="{{ url_for('configure', selected_tosca=tosca_filename) }}" class="badge badge-pill badge-primary">Configure</a>
             </div>
         </div>
-    {% if loop.index % 3 == 0 %}
+    {% if outer_loop.index % 3 == 0 %}
     </div>
     {% endif %}
+
+
+    {% endif %}
+    {% endfor %}
     {% endfor %}
     {% if templates|count % 3 != 0 %}
     </div>

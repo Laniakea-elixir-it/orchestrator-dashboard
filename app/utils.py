@@ -110,4 +110,6 @@ def extractToscaInfo(toscaDir, tosca_pars_dir, toscaTemplates, tosca_metadata_di
                                         if "tabs" in pars_data:
                                             toscaInfo[tosca]['tabs'] = pars_data["tabs"]
 
-    return toscaInfo
+    sortedToscas = sorted(toscaInfo, key=lambda x: ('ribbon_tag' not in toscaInfo[x]['metadata'], toscaInfo[x]['metadata'].get('ribbon_tag',None)) )
+
+    return toscaInfo, sortedToscas
