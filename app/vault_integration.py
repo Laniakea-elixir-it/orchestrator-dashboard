@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Hashicorp Vault management class
 Currently supported kv secrets engine - version 2 (https://www.vaultproject.io/api/secret/kv/kv-v2.html#delete-metadata-and-all-versions)

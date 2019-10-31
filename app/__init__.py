@@ -4,12 +4,18 @@ from flask_dance.consumer import OAuth2ConsumerBlueprint
 from flask_mail import Mail
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
-
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
 app.secret_key="30bb7cf2-1fef-4d26-83f0-8096b6dcc7a3"
 app.config.from_json('config.json')
+
+loglevel = app.config.get("LOG_LEVEL") if app.config.get("LOG_LEVEL") else "INFO"
+
+numeric_level = getattr(logging, loglevel.upper(), None)
+if not isinstance(numeric_level, int):
+    raise ValueError('Invalid log level: %s' % loglevel)
+
+logging.basicConfig(level=numeric_level)
 
 iam_base_url=app.config['IAM_BASE_URL']
 iam_token_url=iam_base_url + '/token'
@@ -35,4 +41,3 @@ from app import routes, errors
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0')
-

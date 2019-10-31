@@ -11,9 +11,11 @@
     {% endif %}
   {% endfor %}
 {% else %}
-  <li class="nav-item"><a class="nav-link" data-toggle="tab" href=#InputValues>Input Values</a></li>
+  <li class="nav-item"><a class="nav-link active" data-toggle="tab" href=#InputValues>Input Values</a></li>
 {% endif %}
+{% if session['enable_advanced_menu'] == "yes" %}
 <li class="nav-item"><a class="nav-link" data-toggle="tab" href=#Advanced>Advanced</a></li> <!-- always create advanced tab -->
+{% endif %}
 </ul>
   <!-- end tab creation section -->
 
@@ -37,7 +39,7 @@
     {% endfor %}
 
   {% else %} <!-- no tabs -->
-    <div id=InputValues class="tab-pane fade in active">
+    <div id=InputValues class="tab-pane fade show active">
       {% for key, value in inputs.items() %}
         {% include 'input_types.html' %}
       {% endfor %}
