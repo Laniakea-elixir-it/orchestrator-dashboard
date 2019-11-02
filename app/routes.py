@@ -727,7 +727,6 @@ def depoutput(depid=None):
         # inp = json.dumps(dep['inputs'])
         inp = dep[
             'inputs']  # we keep this as json, to retrieve info to enable passphrase recovery from vault only for those deployment has storage_encryption enabled
-        links = json.dumps(dep['links'])
 
         volume_state = dep['storage_encryption']
         if volume_state == 1:
@@ -740,8 +739,7 @@ def depoutput(depid=None):
                                volume_state=volume_state,
                                endpoint_state=endpoint_state,
                                inputs=inp,
-                               outputs=output,
-                               links=links)
+                               outputs=output)
 
 
 def encrypted_volume_status(depid=None):

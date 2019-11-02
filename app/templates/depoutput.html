@@ -46,73 +46,76 @@
           <p><b>ENDPOINT</b> <a href="{{deployment.endpoint}}" target="_blank">{{deployment.endpoint}}</a></p>
 
           {% if deployment.status == 'CREATE_COMPLETE' %} <!-- Display these options only if the deployment is complete -->
-          <!-- Vault integration  if -->
-          {% if 'storage_encryption' in inputs and inputs['storage_encryption'] == 'True' %}
-          <hr/>
-          <button type=button id="retrieveBtn" class="btn btn-small btn-outline-success" onclick="getVaultSecret( href='{{ url_for('read_secret_from_vault', depid=deployment.uuid) }}' )">
-            <span class="fas fa-lock mr-2"></span>Retrieve LUKS passphrase
-          </button>
-          <!-- Modal Retrieve luks passphrase-->
-          <div class="modal fade" id="newModal">
-            <div class="modal-dialog">
-              <div class="modal-content">
-                <div class="modal-header">
-                  <h5 class="modal-title" id="get_luks_passwd_label_{{deployment.uuid}}">LUKS passphrase</h5>
-                  <button type="button" class="close" data-dismiss="modal">&times;</button>
-                </div>
-                <div class="modal-body">
-                <input id="luksPassphrase" class="form-control" type="password">
-                </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                  <!--button type="button" class="btn btn-success" onclick="copyToClipboard()" data-dismiss="modal"><span class="fas fa-copy"></span> Copy to clipboard</button-->
+            {% if session['userid'] == deployment.createdBy['subject'] %} <!-- Show encryption info only if the deployment belong to user (thus avoiding admin) -->
+              <!-- Vault integration  if -->
+              {% if 'storage_encryption' in inputs and inputs['storage_encryption'] == 'True' %}
+              <hr/>
+              <button type=button id="retrieveBtn" class="btn btn-small btn-outline-success" onclick="getVaultSecret( href='{{ url_for('read_secret_from_vault', depid=deployment.uuid) }}' )">
+                <span class="fas fa-lock mr-2"></span>Retrieve LUKS passphrase
+              </button>
+              <!-- Modal Retrieve luks passphrase-->
+              <div class="modal fade" id="newModal">
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title" id="get_luks_passwd_label_{{deployment.uuid}}">LUKS passphrase</h5>
+                      <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                    <input id="luksPassphrase" class="form-control" type="password">
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                      <!--button type="button" class="btn btn-success" onclick="copyToClipboard()" data-dismiss="modal"><span class="fas fa-copy"></span> Copy to clipboard</button-->
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-          {% endif %}
-
-          {% if '/galaxy' in deployment.endpoint %}
-          <hr/>
-          <p>
-            <b>Galaxy status: </b>
-            {% if endpoint_state == "200" or endpoint_state == "302" %}
-              <span class="badge badge-pill badge-success"><span class="fas fa-globe-europe mr-2"></span> On-line </span>
-            {% else %}
-              <span class="badge badge-pill badge-danger"><span class="fas fa-unlink mr-2"></span> Off-line </span>
-              {% if volume_state == "unmounted" %}
-                <span class="d-inline-block" tabindex="0" data-toggle="tooltip" title="Please mount the encrypted storage volume before">
-                <button type="button" class="btn btn-outline-danger btn-sm" style="pointer-events: none;" disabled>
-                  <span class="fas fa-key mr-2"></span>Try to restart Galaxy
-                </button>
-                </span>
-              {% else %}
-                <button id="galaxyStartupBtn" class="btn btn-outline-danger btn-sm" role="button" onclick="galaxyStartup( href='{{ url_for('galaxy_startup', depid=deployment.uuid) }}' )">
-                  <span class="fas fa-key mr-2"></span>Try to restart Galaxy
-                </button>
               {% endif %}
-            {% endif %}
-          </p>
-          {% endif %}
 
-          <!-- Start encryption volume status if -->
-          {% if 'storage_encryption' in inputs and inputs['storage_encryption'] == 'True' %}
-          <hr/>
-          <p>
-            <b>Encrypted volume status: </b>
-            {% if volume_state == "mounted" %}
-              <span class="badge badge-pill badge-success"><span class="fas fa-lock-open mr-2"></span> Mounted </span>
-            {% elif volume_state == "unmounted" %}
-              <span class="badge badge-pill badge-danger"><span class="fas fa-lock mr-2"></span> Unmounted </span>
-              <button type="button" id="luksOpenBtn" class="btn btn-outline-danger btn-sm" onclick="mountLUKSVolume( href='{{ url_for('encrypted_volume_open', depid=deployment.uuid) }}' )">
-                <span class="fas fa-key mr-2"></span>Unlock and mount volume
-              </button>
-            {% else %}
-              <span class="badge badge-pill badge-warning"> Unavailable</span>
-            {% endif %}
-          </p>
-          {% endif %}<!-- End encryption volume status if -->
-          {% endif %}<!-- End instance status if -->
+              {% if '/galaxy' in deployment.endpoint %}
+              <hr/>
+              <p>
+                <b>Galaxy status: </b>
+                {% if endpoint_state == "200" or endpoint_state == "302" %}
+                  <span class="badge badge-pill badge-success"><span class="fas fa-globe-europe mr-2"></span> On-line </span>
+                {% else %}
+                  <span class="badge badge-pill badge-danger"><span class="fas fa-unlink mr-2"></span> Off-line </span>
+                  {% if volume_state == "unmounted" %}
+                    <span class="d-inline-block" tabindex="0" data-toggle="tooltip" title="Please mount the encrypted storage volume before">
+                    <button type="button" class="btn btn-outline-danger btn-sm" style="pointer-events: none;" disabled>
+                      <span class="fas fa-key mr-2"></span>Try to restart Galaxy
+                    </button>
+                    </span>
+                  {% else %}
+                    <button id="galaxyStartupBtn" class="btn btn-outline-danger btn-sm" role="button" onclick="galaxyStartup( href='{{ url_for('galaxy_startup', depid=deployment.uuid) }}' )">
+                      <span class="fas fa-key mr-2"></span>Try to restart Galaxy
+                    </button>
+                  {% endif %}
+                {% endif %}
+              </p>
+              {% endif %}
+
+              <!-- Start encryption volume status if -->
+              {% if 'storage_encryption' in inputs and inputs['storage_encryption'] == 'True' %}
+              <hr/>
+              <p>
+                <b>Encrypted volume status: </b>
+                {% if volume_state == "mounted" %}
+                  <span class="badge badge-pill badge-success"><span class="fas fa-lock-open mr-2"></span> Mounted </span>
+                {% elif volume_state == "unmounted" %}
+                  <span class="badge badge-pill badge-danger"><span class="fas fa-lock mr-2"></span> Unmounted </span>
+                  <button type="button" id="luksOpenBtn" class="btn btn-outline-danger btn-sm" onclick="mountLUKSVolume( href='{{ url_for('encrypted_volume_open', depid=deployment.uuid) }}' )">
+                    <span class="fas fa-key mr-2"></span>Unlock and mount volume
+                  </button>
+                {% else %}
+                  <span class="badge badge-pill badge-warning"> Unavailable</span>
+                {% endif %}
+              </p>
+              {% endif %} <!-- End encryption volume status if -->
+
+            {% endif %} <!-- end if user session -->
+          {% endif %} <!-- End instance status if -->
         </div>
         <div class="tab-pane fade" id="InputValues">
           <br>
