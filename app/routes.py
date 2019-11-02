@@ -132,7 +132,7 @@ def show_deployments(subject):
 
         headers = {'Authorization': 'bearer %s' % access_token}
 
-        url = orchestratorUrl + "/deployments?createdBy={}&page={}&size={}".format('{}@{}'.format(subject, issuer), 0,
+        url = settings.orchestratorUrl + "/deployments?createdBy={}&page={}&size={}".format('{}@{}'.format(subject, issuer), 0,
                                                                                    999999)
         response = requests.get(url, headers=headers)
 
@@ -485,7 +485,7 @@ def updatedeploymentsstatus(deployments, userid):
                     access_token = iam_blueprint.session.token['access_token']
                     headers = {'Authorization': 'bearer %s' % access_token}
 
-                    url = orchestratorUrl + "/deployments/" + uuid + "/template"
+                    url = settings.orchestratorUrl + "/deployments/" + uuid + "/template"
                     response = requests.get(url, headers=headers)
 
                     if not response.ok:
