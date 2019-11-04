@@ -91,7 +91,7 @@ def authorized_with_valid_token(f):
         if not iam_blueprint.session.authorized or 'username' not in session:
            return redirect(url_for('login'))
 
-        if iam_blueprint.session.token['expires_in'] < 20:
+        if iam_blueprint.session.token['expires_in'] < 60:
             app.logger.debug("Force refresh token")
             iam_blueprint.session.get('/userinfo')
 
