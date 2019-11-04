@@ -644,6 +644,7 @@ def showdeployments():
     response = requests.get(url, headers=headers)
 
     deployments = {}
+    inputs={}
     if not response.ok:
         flash("Error retrieving deployment list: \n" + response.text, 'warning')
     else:
@@ -651,7 +652,6 @@ def showdeployments():
         deployments = updatedeploymentsstatus(deployments, session['userid'])
         app.logger.debug("Deployments: " + str(deployments))
 
-        inputs={}
         deployments_uuid_array=[]
         for deployment in deployments:
             deployments_uuid_array.append(deployment['uuid'])
