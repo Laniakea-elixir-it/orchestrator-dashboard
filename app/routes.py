@@ -614,7 +614,7 @@ def home():
                 insert_values = (
                     account_info_json['sub'], account_info_json['name'], account_info_json['preferred_username'],
                     account_info_json['given_name'], account_info_json['family_name'], email,
-                    account_info_json['organisation_name'], avatar(email, 26), role, '1')
+                    account_info_json['organisation_name'], utils.avatar(email, 26), role, '1')
                 cursor.execute(insert_query, insert_values)
                 connection.commit()
             else:
@@ -710,7 +710,7 @@ def depoutput(depid=None):
 
     access_token = iam_blueprint.session.token['access_token']
 
-    if not depid in session['deployments_uuid_array']:
+    if not session['userrole'].lower() == 'admin' and not depid in session['deployments_uuid_array']:
         flash("You are not allowed to browse this page!")
         return redirect(url_for('showdeployments'))
 
@@ -727,7 +727,6 @@ def depoutput(depid=None):
         # inp = json.dumps(dep['inputs'])
         inp = dep[
             'inputs']  # we keep this as json, to retrieve info to enable passphrase recovery from vault only for those deployment has storage_encryption enabled
-        links = json.dumps(dep['links'])
 
         volume_state = dep['storage_encryption']
         if volume_state == 1:
@@ -740,8 +739,7 @@ def depoutput(depid=None):
                                volume_state=volume_state,
                                endpoint_state=endpoint_state,
                                inputs=inp,
-                               outputs=output,
-                               links=links)
+                               outputs=output)
 
 
 def encrypted_volume_status(depid=None):
