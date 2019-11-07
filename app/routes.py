@@ -899,7 +899,7 @@ def createdep():
     app.logger.debug("Form data: " + json.dumps(request.form.to_dict()))
 
     with io.open(settings.toscaDir + request.args.get('template')) as stream:
-        template = yaml.load(stream)
+        template = yaml.full_load(stream)
         # rewind file
         stream.seek(0)
         template_text = stream.read()
