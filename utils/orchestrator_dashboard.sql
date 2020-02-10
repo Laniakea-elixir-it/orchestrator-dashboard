@@ -1,4 +1,4 @@
-CREATE DATABASE  IF NOT EXISTS `orchestrator_dashboard`
+CREATE DATABASE  IF NOT EXISTS `orchestrator_dashboard`;
 USE `orchestrator_dashboard`;
 
 --

@@ -36,6 +36,7 @@ db_name = app.config['DB_NAME']
 app.jinja_env.filters['tojson_pretty'] = utils.to_pretty_json
 
 def getdbconnection():
+    connection = db.db_connection(db_address) 
     cnx = mysql.connector.connect(user=db_user,
                                   password=db_password,
                                   host=db_host,
@@ -50,6 +51,7 @@ app.logger.debug("EXTERNAL_LINKS: " + json.dumps(settings.external_links) )
 app.logger.debug("ENABLE_ADVANCED_MENU: " + str(settings.enable_advanced_menu) )
 
 #______________________________________
+# TODO move from here
 # vault section
 vault_url = app.config.get('VAULT_URL')
 if vault_url:
@@ -288,6 +290,8 @@ def get_deployment(uuid):
     cursor = None
 
     try:
+
+
         connection = getdbconnection()
         cursor = connection.cursor()
 
@@ -297,7 +301,7 @@ def get_deployment(uuid):
         r = cursor.fetchone()
         if cursor.rowcount == 1:
             deployment = cvdeployment(r)
-
+        print(deployment)
     except mysql.connector.Error as error:
         logexception("reading deployments table: {}".format(error))
     finally:
@@ -348,7 +352,6 @@ def cvdeployments(listt):
     deployments = []
     for tp in listt:
         deployments.append(cvdeployment(tp))
-
     return deployments
 
 

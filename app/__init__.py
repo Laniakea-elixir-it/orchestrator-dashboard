@@ -2,6 +2,8 @@ from flask import Flask
 from werkzeug.contrib.fixers import ProxyFix
 from flask_dance.consumer import OAuth2ConsumerBlueprint
 from flask_mail import Mail
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 import logging
 
 app = Flask(__name__)
@@ -37,7 +39,10 @@ app.register_blueprint(iam_blueprint, url_prefix="/login")
 
 mail = Mail(app)
 
-from app import routes, errors
+db = SQLAlchemy(app)
+migrate = Migrate(app, db)
+
+from app import routes, errors, models
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0')
