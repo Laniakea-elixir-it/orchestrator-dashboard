@@ -56,6 +56,41 @@
       {% for constraint in value.constraints %}
       <div>
         <input type="checkbox" data-toggle="toggle" id="{{key}}" name="{{key}}" data-size="sm" data-offstyle="dark" value={{constraint['value']}}>
+
+        <div id="encryption_alert" class="modal fade" role="dialog">
+          <div class="modal-dialog" role="document">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">Storage encryption alert</h5>
+              </div>
+              <div class="modal-body">
+                <p>
+                Only the external volume, where Galaxy data are stored, is encrypted, not the Virtual Machine root disk. The encryption layer should be secure enough to protect data uploaded from users to the Galaxy instance from any unwantend attention. However, users must be aware that the responsibility of correctly handling any sensitive data they upload to Laniakea falls on them and that the administrators of the Laniakea service can not be considered responsible for any data breach that may happen due to neglicence by Galaxy users or the action of external malicious attackers.
+                </p>
+              </div>
+              <div class="modal-footer">
+                <a id="cancelBtn" class="btn btn-primary text-white" role="button" onclick="toggle_off()">Cancel</a>
+                <a id="confirmBtn" class="btn btn-success text-white" role="button" data-dismiss="modal">Accept</a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {% if 'storage_encryption' in key %}
+        <script>
+        $("#{{key}}").on('change', function() {
+            if ($(this).is(':checked')) {
+                $('#encryption_alert').modal({ backdrop: 'static', keyboard: false },'show');
+            }
+        });
+
+        function toggle_off() {
+          $('#{{key}}').prop('checked', false).change();
+          $('#encryption_alert').modal('hide');
+        }
+
+        </script>
+        {% endif %}
       </div>
       {% endfor %}
     <!-- end toggle type -->
