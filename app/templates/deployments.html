@@ -66,7 +66,7 @@
             <td>
               <div class="btn-group">
                 <!-- DELETE -->
-                <button type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#delete_confirm_{{deployment.uuid}}" data-backdrop="static" data-keyboard="false" {% if "DELETE_" in deployment.status %}disabled{% endif %}>
+                <button type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#delete_confirm_{{deployment.uuid}}" data-backdrop="static" data-keyboard="false" {% if "DELETE_IN_PROGRESS" in deployment.status %}disabled{% endif %}>
                   <span class="fas fa-trash-alt mr-2"></span>Delete
                 </button>
                 <button type="button" class="btn btn-danger dropdown-toggle dropdown-toggle-split" data-toggle="dropdown">
