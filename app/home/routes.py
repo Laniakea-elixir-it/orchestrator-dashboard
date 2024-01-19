@@ -125,26 +125,30 @@ def login():
 
 def set_template_access(tosca, user_groups, active_group):
     info = {}
+
     for k, v in tosca.items():
-        visibility = v.get("metadata").get("visibility") if "visibility" in v.get("metadata") else {"type": "public"}
+        metadata = v.get("metadata", {})
+        visibility = metadata.get("visibility", {"type": "public"})
 
-        if visibility.get("type") != "public":
-            
-            regex = False if "groups_regex" not in visibility else True
-
-            if regex:
-                access_locked = not re.match(visibility.get('groups_regex'), active_group)
-            else:
-                allowed_groups = visibility.get("groups")
-                access_locked = True if active_group not in allowed_groups else False
-
-            if (visibility.get("type") == "private" and not access_locked) or visibility.get("type") == "protected":
-                v["metadata"]["access_locked"] = access_locked
-                info[k] = v         
-        else:
-            info[k] = v        
+        if not active_group and visibility["type"] != "private":
+            metadata["access_locked"] = True
+            info[k] = v
+        elif active_group:
+            is_locked = is_access_locked(visibility, active_group)
+            if not (visibility["type"] == "private" and is_locked):
+                metadata["access_locked"] = is_locked
+                info[k] = v
 
     return info
+
+
+def is_access_locked(visibility, active_group):
+    regex = "groups_regex" in visibility
+    if regex:
+        return not re.match(visibility["groups_regex"], active_group)
+    else:
+        allowed_groups = visibility.get("groups", [])
+        return active_group not in allowed_groups
 
 
 def check_template_access(user_groups, active_group):
