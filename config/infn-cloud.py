@@ -10,8 +10,6 @@ FEATURE_REQUIRE_USER_SSH_PUBKEY = "yes"
 FEATURE_PORTS_REQUEST = "yes"
 FEATURE_ACCESS_REQUEST = "no"
 
-ACCESS_REQUEST_TAG = "SYS-ADMIN ONLY"
-
 ### Template Paths
 HOME_TEMPLATE = 'infn-cloud/home.html'
 FOOTER_TEMPLATE = 'infn-cloud/footer.html'

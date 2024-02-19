@@ -24,6 +24,16 @@
     <div class="row">
         <div class="col-md-12">
         <p class="font-weight-bold" style="font-size:20px;font-variant:small-caps">On-demand Services: </p>
+        {% if templates_info.items()|length == 0 %}    
+        <div class="jumbotron jumbotron-fluid">
+        <div class="container">
+            <h2 class="display-4">No Available Services for Deployment</h2>
+            <p class="lead">We're sorry, but no services are currently available for deployment.</p>
+            <p class="lead">This could be due to specific requirements or settings.</p>
+            <p class="lead">Please contact our support team for assistance."</p>
+        </div>
+        </div>
+        {% endif %}
         {% for tosca_name, tosca in templates_info.items() %}
             {% if loop.index % 3 == 1 %}
             <!-- open card deck -->
@@ -39,7 +49,7 @@
                         <img class="card-img-bottom img-fluid" src="{{tosca['metadata']['icon']}}" alt="Card image cap">
                         {% if tosca['metadata']['access_locked'] %}
                         <div class="ribbon red">
-                            <span>{{ access_request_tag }}</span>
+                            <span>{{ not_granted_access_tag }}</span>
                         </div>
                         {% else %}
                             {% if tosca['metadata']['tag'] is defined %}

@@ -12,19 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""
-    Class to load tosca templates at application start
-"""
+
 import json
 import os
 import io
 from fnmatch import fnmatch
+import uuid
 import yaml
+import jsonschema
 
 
-class ToscaInfo(object):
+class ToscaInfo:
+    """Class to load tosca templates and metadata at application start"""
 
-    def __init__(self, redis_client, tosca_dir=None, settings_dir=None):
+    def __init__(self, redis_client, tosca_dir, settings_dir, metadata_schema):
         """
         Initialize the flask extension
         :param tosca_dir: the dir of the tosca templates
@@ -34,6 +35,7 @@ class ToscaInfo(object):
         self.tosca_dir = tosca_dir + '/'
         self.tosca_params_dir = settings_dir + '/tosca-parameters'
         self.tosca_metadata_dir = settings_dir + '/tosca-metadata'
+        self.metadata_schema = metadata_schema
 
         tosca_info = {}
         tosca_gmetadata = {}
@@ -41,10 +43,7 @@ class ToscaInfo(object):
 
         tosca_templates = self._loadtoscatemplates()
         tosca_info = self._extractalltoscainfo(tosca_templates)
-
-        if os.path.isfile(self.tosca_metadata_dir + "/metadata.yml"):
-            with io.open(self.tosca_metadata_dir + "/metadata.yml") as stream:
-                tosca_gmetadata = yaml.full_load(stream)
+        tosca_gmetadata = self._loadmetadata()
 
         redis_client.set("tosca_templates", json.dumps(tosca_templates))
         redis_client.set("tosca_gmetadata", json.dumps(tosca_gmetadata))
@@ -54,16 +53,24 @@ class ToscaInfo(object):
     def reload(self):
         tosca_templates = self._loadtoscatemplates()
         tosca_info = self._extractalltoscainfo(tosca_templates)
-        tosca_gmetadata = {}
-
-        if os.path.isfile(self.tosca_metadata_dir + "/metadata.yml"):
-            with io.open(self.tosca_metadata_dir + "/metadata.yml") as stream:
-                tosca_gmetadata = yaml.full_load(stream)
+        tosca_gmetadata = self._loadmetadata()
 
         self.redis_client.set("tosca_templates", json.dumps(tosca_templates))
         self.redis_client.set("tosca_gmetadata", json.dumps(tosca_gmetadata))
         self.redis_client.set("tosca_info", json.dumps(tosca_info))
 
+    def _loadmetadata(self):
+        if os.path.isfile(self.tosca_metadata_dir + "/metadata.yml"):
+            with io.open(self.tosca_metadata_dir + "/metadata.yml") as stream:
+                metadata = yaml.full_load(stream)
+
+                # validate against schema
+                jsonschema.validate(metadata, self.metadata_schema, format_checker=jsonschema.Draft202012Validator.FORMAT_CHECKER)
+                #tosca_gmetadata = {service["id"]: {k: v for k, v in service.items() if k != "id"} for service in metadata['services']}
+                tosca_gmetadata = {str(uuid.uuid4()): service for service in metadata['services']}
+                return tosca_gmetadata
+
+    
     def _loadtoscatemplates(self):
         toscatemplates = []
         for path, subdirs, files in os.walk(self.tosca_dir):
@@ -81,19 +88,20 @@ class ToscaInfo(object):
             with io.open(self.tosca_dir + tosca) as stream:
                 template = yaml.full_load(stream)
                 tosca_info[tosca] = self.extracttoscainfo(template, tosca)
+                #info = self.extracttoscainfo(template, tosca)
+                #tosca_info[info.get('id')] = info
         return tosca_info
 
     def extracttoscainfo(self, template, tosca):
-
+        
         tosca_info = {
             "valid": True,
             "description": "TOSCA Template",
             "metadata": {
                 "icon": "https://cdn4.iconfinder.com/data/icons/mosaicon-04/512/websettings-512.png",
-                        "visibility": "public",
-                        "allowed_groups": '*',
-                        "require_ssh_key": True,
-                        "template_type": ""
+                "visibility": { "type": "public" },
+                "require_ssh_key": True,
+                "template_type": ""
             },
             "enable_config_form": False,
             "inputs": {},

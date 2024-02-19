@@ -27,3 +27,4 @@ boto3==1.21.27
 python-ldap==3.4.0
 randomcolor
 sshpubkeys
+jsonschema[format]

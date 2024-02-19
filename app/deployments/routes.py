@@ -13,27 +13,26 @@
 # limitations under the License.
 
 import copy
-
+import uuid as uuid_generator
+import io
+import os
+import re
+from urllib.parse import urlparse
+import yaml
 from flask import Blueprint, session, render_template, flash, redirect, url_for, json, request
+from packaging import version
+from werkzeug.exceptions import Forbidden
+from werkzeug.utils import secure_filename
 from app import app, iam_blueprint, tosca, vaultservice
 from app.lib import auth, utils, settings, dbhelpers, yourls
 from app.lib.ldap_user import LdapUserManager
 from app.models.Deployment import Deployment
 from app.providers import sla
-from app.lib import ToscaInfo as tosca_helpers
+from app.lib import tosca_info as tosca_helpers
 from app.lib import openstack as keystone
 from app.lib.orchestrator import Orchestrator
 from app.lib import s3 as s3
-from werkzeug.exceptions import Forbidden
-from werkzeug.utils import secure_filename
 from app.swift.swift import Swift
-from packaging import version
-from urllib.parse import urlparse
-import uuid as uuid_generator
-import yaml
-import io
-import os
-import re
 
 deployments_bp = Blueprint('deployments_bp', __name__,
                            template_folder='templates',

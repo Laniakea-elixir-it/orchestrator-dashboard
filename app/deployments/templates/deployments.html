@@ -88,7 +88,7 @@
                         <span class="fas fa-edit mr-2 grey-text"></span>Edit</a>
                     <a class="dropdown-item" href="{{ url_for('deployments_bp.deptemplate', depid=deployment.uuid) }}"><span class="fas fa-search mr-2 grey-text"></span>Show template</a>
                   {% if enable_update_deployment == "yes" and deployment.updatable == 1 %}
-                    <a class="dropdown-item" href="{{ url_for('deployments_bp.depupdate', depid=deployment.uuid) }}"><span class="fas fa-plus mr-2 grey-text"></span>Update</a>
+                    <a class="dropdown-item" href="{{ url_for('deployments_bp.depupdate', depid=deployment.uuid) }}"><span class="fas fa-plus-minus mr-2 grey-text"></span>Add/Remove nodes</a>
                   {% endif %}
                   {% if deployment.deployment_type == "CLOUD" %}
                       <a class="dropdown-item {% if deployment.physicalId is not defined %}disabled{% endif %}" href="{{ url_for('deployments_bp.deplog', depid=deployment.uuid) }}">

@@ -26,7 +26,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate, upgrade
 from flask_caching import Cache
 from flask_redis import FlaskRedis
-from app.lib.ToscaInfo import ToscaInfo
+from app.lib.tosca_info import ToscaInfo
 from app.lib.Vault import Vault
 
 import logging
@@ -48,6 +48,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app)
 app.secret_key = "30bb7cf2-1fef-4d26-83f0-8096b6dcc7a3"
 app.config.from_object('config.default')
 app.config.from_file('config.json', json.load)
+app.config.from_file('../config/schemas/metadata_schema.json', json.load)
 
 if app.config.get("FEATURE_VAULT_INTEGRATION") == "yes":
     app.config.from_file('vault-config.json', json.load)
@@ -87,7 +88,7 @@ def inject_settings():
         s3_allowed_groups=app.config.get("S3_IAM_GROUPS") if app.config.get("S3_IAM_GROUPS") else [],
         enable_access_request=app.config.get("FEATURE_ACCESS_REQUEST") if app.config.get(
             'FEATURE_ACCESS_REQUEST') else "no",
-        access_request_tag=app.config.get("ACCESS_REQUEST_TAG")
+        not_granted_access_tag=app.config.get("NOT_GRANTED_ACCESS_TAG")
     )
 
 
@@ -107,7 +108,7 @@ mail = Mail(app)
 
 # initialize ToscaInfo
 tosca: ToscaInfo = ToscaInfo(redis_client, app.config.get("TOSCA_TEMPLATES_DIR"),
-                             app.config.get("SETTINGS_DIR"))
+                             app.config.get("SETTINGS_DIR"), app.config.get("METADATA_SCHEMA"))
 
 from app.errors.routes import errors_bp
 app.register_blueprint(errors_bp)
