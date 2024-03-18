@@ -29,6 +29,9 @@
         <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#DeploymentStatus">Overview</a></li>
         <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#InputValues">Input values</a></li>
         <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#OutputValues">Output values</a></li>
+        {% if deployment.vault_secret_key != '[]'  %}
+	<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#SecretsValues">Secrets management</a></li>
+	{% endif %}
       </ul>
 
 
@@ -51,7 +54,7 @@
               <!-- Vault integration  if -->
               {% if 'storage_encryption' in inputs and inputs['storage_encryption'] == 'True' %}
               <hr/>
-              <button type=button id="retrieveBtn" class="btn btn-small btn-outline-success" onclick="getVaultSecret( href='{{ url_for('vault_bp.read_secret', depid=deployment.uuid) }}' )">
+              <button type=button id="retrieveBtn" class="btn btn-small btn-outline-success" onclick="getVaultSecret( 'encryption', href='{{ url_for('vault_bp.read_encryption_key', depid=deployment.uuid, key=inputs['vault_encryption_key']) }}' )">
                 <span class="fas fa-lock mr-2"></span>Retrieve LUKS passphrase
               </button>
               <!-- Modal Retrieve luks passphrase-->
@@ -78,8 +81,10 @@
         </div>
         <div class="tab-pane fade" id="InputValues">
           <br>
-	      {% for k,v in inputs.items() %}
-          {% if "password" in k or "token" in k %}
+          {% for k,v in inputs.items() %}
+          {% if stinputs[k] is defined and stinputs[k].type is defined and (stinputs[k].type == "secret" or stinputs[k].type == "list_secrets") %}
+	  <p><strong>{{k}}</strong>: <span class="fas fa-lock"></span></p>
+	  {% elif "password" in k or "token" in k %}
           <div>
           <p><strong>{{k}}</strong>: <input type="password" id="{{k}}" disabled value="{{v}}">
           <input type="checkbox" onclick="toggle({{k}})"> Show
@@ -93,8 +98,39 @@
         <div class="tab-pane fade" id="OutputValues">
         {% include "output_values.html" %}		
         </div>
+        <!-- Add secrets section -->
+        {% if deployment.vault_secret_key != '[]'  %}
+        <div class="tab-pane fade" id="SecretsValues">
+	  <br>
+	  {% set secrets_list = deployment.vault_secret_key.replace("'", "").replace("[", "").replace("]", "").split(', ') %}
+	  {% for k in secrets_list %}
+	  <p><strong>{{k}}</strong>:
+          <button type=button id="secretBtn-{{k}}" class="btn btn-sm btn-outline-success" onclick="getVaultSecret( 'secret', href='{{ url_for('vault_bp.read_secret', depid=deployment.uuid, key=k) }}' )">
+              <span class="fas fa-lock"></span>
+          </button>
+              <!-- Modal Retrieve secret -->
+              <div class="modal fade" id="secretModal">
+                <div class="modal-dialog">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                            <h5 class="modal-title" id="get_luks_passwd_label_{{deployment.uuid}}">Secret: {{ k }}</h5>
+                      <button type="button" class="close" data-dismiss="modal">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                    <input id="userSecret" class="form-control" type="password">
+                    </div>
+                    <div class="modal-footer">
+                      <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+	  </p>
+	  {% endfor %}
+        </div>
+        {% endif %}
+        <!-- end secrets section -->
       </div>
-
     </div>
   </div>
 </div>
@@ -102,6 +138,7 @@
 
 <script>
   $('#luksPassphrase').password();
+  $('#userSecret').password();
 </script>
 
 <script>
@@ -120,11 +157,23 @@ $(document).ready(function () {
         return true;
     });
 });
+
+{% for k,v in inputs.items() %}
+{% if stinputs[k] is defined and stinputs[k].type is defined and stinputs[k].type == "secret" %}
+$(document).ready(function () {
+	$("#secretBtn-{{k}}").click(function () {
+        // add spinner to button
+        $(this).html( `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>` );
+        return true;
+    });
+});
+{% endif %}
+{% endfor %}
 </script>
 
 <script>
 
-async function getVaultSecret(url)
+async function getVaultSecret(type,url)
 {
   let secret = "secret placeholder";
 
@@ -132,24 +181,37 @@ async function getVaultSecret(url)
   let result = await response;
   secret = await response.text();
 
-  fillModal(secret);
+  fillModal(type,secret);
   stopSpinner();
 };
 
-function fillModal(secret)
+function fillModal(type,secret)
 {
+    modal_type="#secretModal"
+    if(type=='encryption'){
+      modal_type="#newModal"
+    }
     $(document).ready(function(){
-      $("#newModal").on('show.bs.modal', function () {
+      $(modal_type).on('show.bs.modal', function () {
         var modal = $(this)
         modal.find('.modal-body input').val( secret );
       });
-      $("#newModal").modal("show");
+      $(modal_type).modal("show");
     });
 }
 
 function stopSpinner()
 {
   $("#retrieveBtn").html( `<span class="fas fa-lock mr-2"></span>Retrieve LUKS passphrase` );
+  $("#retrieveBtn").prop('disabled', false);
+
+  {% for k,v in inputs.items() %}
+  {% if stinputs[k] is defined and stinputs[k].type is defined and stinputs[k].type == "secret" %}
+  $("#secretBtn-{{k}}").html( `<span class="fas fa-lock"></span>` );
+  $("#secretBtn-{{k}}").prop('disabled', false); 
+  {% endif %}
+  {% endfor %}
+
 }
 </script>
 

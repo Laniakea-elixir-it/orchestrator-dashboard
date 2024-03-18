@@ -30,9 +30,31 @@ issuer = settings.iamUrl
 if not issuer.endswith('/'):
     issuer += '/'
 
-@vault_bp.route('/read_secret/<depid>')
+@vault_bp.route('/list_secrets/<depid>')
 @auth.authorized_with_valid_token
-def read_secret(depid=None):
+def list_secrets(depid=None):
+
+    return get_secrets_list(depid, 'user_secrets')
+
+def get_secrets_list(depid, path_prefix):
+    # retrieve deployment from DB
+    dep = dbhelpers.get_deployment(depid)
+    app.logger.warning('--------------------')
+    app.logger.warning(dep.vault_secret_key)
+
+@vault_bp.route('/read_secret/<depid>/<key>')
+@auth.authorized_with_valid_token
+def read_secret(depid=None,key=None):
+
+    return get_secret(depid, 'user_secrets', key)
+
+@vault_bp.route('/read_encryption_passphrase/<depid>/<key>')
+@auth.authorized_with_valid_token
+def read_encryption_key(depid=None,key=None):
+
+    return get_secret(depid, 'storage_encryption', key)
+
+def get_secret(depid, path_prefix, key):
 
     vault_bound_audience = app.config.get('VAULT_BOUND_AUDIENCE')
     vault_mountpoint_kv1 = app.config.get('VAULT_MOUNTPOINT_KV1')
@@ -63,8 +85,8 @@ def read_secret(depid=None):
                                             vault_read_token_renewal_duration)
 
         # retrieval of secret_path and secret_key from the db goes here
-        secret_path = session['userid'] + "/" + dep.vault_secret_uuid
-        user_key = dep.vault_secret_key
+        secret_path = session['userid'] + "/" + dep.vault_secret_uuid + '/' + path_prefix
+        user_key = key
 
         response_output = vault_client.read_secret(read_token, secret_path, user_key)
 
@@ -109,7 +131,7 @@ def store_privkey(access_token, privkey_value):
     vault_client = vaultservice.connect(jwt_token, vault_role)
 
     write_token = vault_client.get_token(vault_write_policy, vault_write_token_time_duration, vault_write_token_renewal_time_duration)
-    
+
     secret_path = session['userid'] + '/ssh_private_key'
     privkey_key = 'ssh_private_key'
 

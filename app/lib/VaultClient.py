@@ -117,8 +117,23 @@ class VaultClient:
 
         secret_dict=dict()
         secret_dict[key]=value
+
         try:
             response = self.client.secrets.kv.v2.create_or_update_secret(path=secret_path, mount_point='secrets', cas=0, secret=secret_dict)
+        except hvac.exceptions.InvalidRequest as e:
+            raise Exception("[FATAL] Unable to write vault path: {}".format(str(e)))
+
+        return response
+
+    def write_secrets_dictionary(self, token, secret_path, secrets_dict):
+        """
+        Patch Secret to Vault
+        Write another secret to an existing path
+        """
+        self.set_token(token)
+
+        try:
+            response = self.client.secrets.kv.v2.create_or_update_secret(path=secret_path, mount_point='secrets', cas=0, secret=secrets_dict)
         except hvac.exceptions.InvalidRequest as e:
             raise Exception("[FATAL] Unable to write vault path: {}".format(str(e)))
 

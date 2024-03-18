@@ -245,6 +245,7 @@ def depoutput(depid=None):
         return render_template('depoutput.html',
                                deployment=dep,
                                inputs=inputs,
+                               stinputs=stinputs,
                                outputs=outputs,
                                stoutputs=stoutputs)
 
@@ -382,7 +383,7 @@ def depdel(depid=None):
     access_token = iam_blueprint.session.token['access_token']
 
     dep = dbhelpers.get_deployment(depid)
-    if dep is not None and dep.storage_encryption == 1:
+    if dep is not None and (dep.storage_encryption == 1 or dep.vault_secret_key != ""):
         secret_path = session['userid'] + "/" + dep.vault_secret_uuid
         delete_secret_from_vault(access_token, secret_path)
 
@@ -445,7 +446,7 @@ def updatedep():
 
     form_data = request.form.to_dict()
 
-    app.logger.debug("Form data: " + json.dumps(form_data))
+    app.logger.debug("Form data: " + json.dumps(form_data)) # FIXME: this is going to print secrets on dashboard logs
 
     depid = form_data['_depid']
 
@@ -616,6 +617,17 @@ def createdep():
 
     uuidgen_deployment = str(uuid_generator.uuid1())
 
+    # Hashicorp Vault variables.
+    # vault_secret_uuid is used to create a uinique path for any secrets. Depends on user IAM uuid and this uuid.
+    # vault_secrets_dict_to_vault is the secrets dictionary, made by key and value pairs, to be sent to vault.
+    # vault_secrets_keys is the array keys stored in the database.
+    vault_secret_uuid = ''
+    vault_secrets_dict_to_vault = dict()
+    vault_secrets_keys = []
+    if app.config.get('FEATURE_VAULT_INTEGRATION') == 'yes':
+        vault_secret_uuid = str(uuid_generator.uuid4()) # FIXME maybe we can use uuidgen_deployment also here?
+        vault_secrets_path = session['userid'] + '/' + vault_secret_uuid
+
     for key, value in stinputs.items():
 
         # Manage special type 'dependent_definition' as first
@@ -675,6 +687,86 @@ def createdep():
                 else:
                     flash("Deployment request failed: no SSH key found. Please upload your key.", "danger")
                     doprocess = False
+
+        # Hashicorp Vault token and secrets management section.
+        # Token management section
+        if value['type'] == 'vault_token':
+            app.logger.info("Retrieve Hashicorp Vault token")
+            if app.config.get('FEATURE_VAULT_INTEGRATION') == 'yes':
+                vault_url = app.config.get('VAULT_URL')
+                vault_secrets_mountpoint = app.config.get('VAULT_SECRETS_PATH') #this should be changed from *PATH to *MOUNTPOINT
+                vault_bound_audience = app.config.get('VAULT_BOUND_AUDIENCE')
+                vault_role = app.config.get("VAULT_ROLE")
+                vault_wrapping_token_time_duration = app.config.get("WRAPPING_TOKEN_TIME_DURATION")
+                vault_token_policy = app.config.get("READ_POLICY")
+                vault_token_time_duration = app.config.get("READ_TOKEN_TIME_DURATION")
+                vault_token_renewal_time_duration = app.config.get("READ_TOKEN_RENEWAL_TIME_DURATION")
+                # Get token policy, otherwise set to read.
+                vault_policy = "read"
+                if inputs[key]:
+                    vault_token_input = inputs[key]
+                    vault_token_input = vault_token_input.replace("'",'"')
+                    vault_token_input = json.loads(vault_token_input)
+                    vault_policy = vault_token_input['policy']
+                    if vault_policy == "write":
+                        vault_token_policy = app.config.get("WRITE_POLICY")
+                        vault_token_token_time_duration = app.config.get("WRITE_TOKEN_TIME_DURATION")
+                        vault_token_renewal_time_duration = app.config.get("WRITE_TOKEN_RENEWAL_TIME_DURATION")
+
+                iam_base_url = settings.iamUrl
+                iam_client_id = settings.iamClientID
+                iam_client_secret = settings.iamClientSecret
+
+                # Token exchange for bound audience
+                jwt_token = auth.exchange_token_with_audience(iam_base_url,
+                                                              iam_client_id,
+                                                              iam_client_secret,
+                                                              access_token,
+                                                              vault_bound_audience)
+                # Retrieve vault client for wrapping token
+                vault_client = vaultservice.connect(jwt_token, vault_role)
+
+                # Get wrapping token
+                wrapping_token = vault_client.get_wrapping_token(vault_wrapping_token_time_duration,
+                                                                 vault_token_policy,
+                                                                 vault_token_time_duration,
+                                                                 vault_token_renewal_time_duration)
+
+                # Add Vault endpoint, mountpoint policy and wrapping token to inputs.
+                inputs[key] = { "endpoint": vault_url, "mountpoint": vault_secrets_mountpoint, "policy": vault_policy, "wrapping_token": wrapping_token }
+
+        # Secrets management section.
+        # Both single secret and list of secrets are managed.
+        # FIXME Consider what happens if VAULT is not enabled.
+
+        if value['type'] == 'secret':
+            app.logger.info("Upload secret to Hashicorp Vault and add its name to Vault secrets dictionary.")
+            if app.config.get('FEATURE_VAULT_INTEGRATION') == 'yes':
+                vault_secrets_keys.append(key)
+                vault_secrets_dict_to_vault[key] = inputs[key]
+                inputs[key] = 'placeholder' # clean inputs
+
+        if value['type'] == 'list_secrets':
+            if key in inputs:
+                app.logger.info("Upload secrets list to Hashicorp Vault and add its name to Vault secrets dictionary.")
+                if app.config.get('FEATURE_VAULT_INTEGRATION') == 'yes':
+                    try:
+                        inputs[key] = json.loads(form_data[key])
+                        data = dict()
+                        for k,v in inputs[key].items():
+                            vault_secrets_keys.append(v['key']) # Add secrets key to names array
+                            vault_secrets_dict_to_vault[v['key']] = v['value'] # Add pairs to dictionary to save them on vault
+                            data[v['key']] = ''
+                        inputs[key] = data
+                    except:
+                        del inputs[key]
+
+        # All custom secrets are stored to "/user_secrets" subdirectory.
+        # FIXME: make this configurable, from the vault config json
+        if value['type'] == 'vault_secret_path':
+            app.logger.info("Set Vault secrets path")
+            if app.config.get('FEATURE_VAULT_INTEGRATION') == 'yes':
+                inputs[key] = vault_secrets_path + '/user_secrets'
 
         # Manage Swift-related fields
         if value["type"] == "swift_autouuid":
@@ -796,7 +888,6 @@ def createdep():
                             e, app.config.get('SUPPORT_EMAIL')), 'danger')
                     doprocess = False
 
-
     if swift and swift_map:
         for k, v in swift_map.items():
             val = swift.mapvalue(k)
@@ -853,7 +944,14 @@ def createdep():
 
     if doprocess:
 
-        storage_encryption, vault_secret_uuid, vault_secret_key = add_storage_encryption(access_token, inputs)
+        storage_encryption = add_storage_encryption(access_token, inputs, vault_secrets_path)
+
+        # FIXME Consider what happens if VAULT is not enabled.
+        if len(vault_secrets_dict_to_vault) != 0:
+            save_secrets_to_vault(access_token, vault_secrets_path, vault_secrets_dict_to_vault)
+
+        # Store secrets list in the db as string.
+        vault_secret_key = str(vault_secrets_keys)
 
         app.logger.debug("Parameters: " + json.dumps(inputs))
 
@@ -930,7 +1028,7 @@ def createdep():
 def delete_secret_from_vault(access_token, secret_path):
     vault_url = app.config.get('VAULT_URL')
 
-    vault_secrets_path = app.config.get('VAULT_SECRETS_PATH')
+    vault_secrets_path = app.config.get('VAULT_SECRETS_PATH') # this variable "VAULT_SECRETS_PATH" is the mountpoint. It should be changed to mountpoint.
     vault_bound_audience = app.config.get('VAULT_BOUND_AUDIENCE')
     vault_delete_policy = app.config.get("DELETE_POLICY")
     vault_delete_token_time_duration = app.config.get("DELETE_TOKEN_TIME_DURATION")
@@ -949,49 +1047,43 @@ def delete_secret_from_vault(access_token, secret_path):
                                           vault_delete_token_time_duration,
                                           vault_delete_token_renewal_time_duration)
 
-    vault_client.delete_secret(delete_token, secret_path)
+    vault_client.delete_secret(delete_token, secret_path+'/user_secrets')
+    vault_client.delete_secret(delete_token, secret_path+'/storage_encryption')
 
 
-def add_storage_encryption(access_token, inputs):
-    vault_url = app.config.get('VAULT_URL')
+def add_storage_encryption(access_token, inputs, deployment_vault_path):
+    storage_encryption = 0
+    if 'storage_encryption' in inputs and inputs['storage_encryption'].lower() == 'true':
+        storage_encryption = 1
+
+    if storage_encryption == 1:
+        app.logger.debug("Storage encryption enabled, setting for secret.")
+        inputs['vault_encryption_path'] = deployment_vault_path + '/storage_encryption'
+    return storage_encryption
+
+
+def save_secrets_to_vault(access_token, secret_path, keydict):
     vault_role = app.config.get("VAULT_ROLE")
     vault_bound_audience = app.config.get('VAULT_BOUND_AUDIENCE')
-    vault_wrapping_token_time_duration = app.config.get("WRAPPING_TOKEN_TIME_DURATION")
     vault_write_policy = app.config.get("WRITE_POLICY")
     vault_write_token_time_duration = app.config.get("WRITE_TOKEN_TIME_DURATION")
     vault_write_token_renewal_time_duration = app.config.get("WRITE_TOKEN_RENEWAL_TIME_DURATION")
 
-    storage_encryption = 0
-    vault_secret_uuid = ''
-    vault_secret_key = ''
-    if 'storage_encryption' in inputs and inputs['storage_encryption'].lower() == 'true':
-        storage_encryption = 1
-        vault_secret_key = 'secret'
+    iam_base_url = settings.iamUrl
+    iam_client_id = settings.iamClientID
+    iam_client_secret = settings.iamClientSecret
 
-    if storage_encryption == 1:
-        inputs['vault_url'] = vault_url
-        vault_secret_uuid = str(uuid_generator.uuid4())
-        if 'vault_secret_key' in inputs:
-            vault_secret_key = inputs['vault_secret_key']
-        app.logger.debug("Storage encryption enabled, appending wrapping token.")
+    jwt_token = auth.exchange_token_with_audience(iam_base_url,
+                                                  iam_client_id,
+                                                  iam_client_secret,
+                                                  access_token,
+                                                  vault_bound_audience)
 
-        jwt_token = auth.exchange_token_with_audience(iam_base_url,
-                                                      iam_client_id,
-                                                      iam_client_secret,
-                                                      access_token,
-                                                      vault_bound_audience)
+    vault_client = vaultservice.connect(jwt_token, vault_role)
 
-        vault_client = vaultservice.connect(jwt_token, vault_role)
+    token = vault_client.get_token(vault_write_policy, vault_write_token_time_duration, vault_write_token_renewal_time_duration)
 
-        wrapping_token = vault_client.get_wrapping_token(vault_wrapping_token_time_duration,
-                                                         vault_write_policy,
-                                                         vault_write_token_time_duration,
-                                                         vault_write_token_renewal_time_duration)
-
-        inputs['vault_wrapping_token'] = wrapping_token
-        inputs['vault_secret_path'] = session['userid'] + '/' + vault_secret_uuid
-
-    return storage_encryption, vault_secret_uuid, vault_secret_key
+    vault_client.write_secrets_dictionary(token, secret_path+'/user_secrets', keydict) #FIXME the mountpoint is hardcoded in VaultClient as "secrets"
 
 
 @deployments_bp.route('/sendportsreq', methods=['POST'])

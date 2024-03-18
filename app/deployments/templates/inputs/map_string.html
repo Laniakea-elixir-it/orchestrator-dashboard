@@ -19,9 +19,10 @@ document.getElementById('add-new-item').onclick = function () {
           </div>
           <div enctype='application/json' class="form-group">
             <label>Value</label>
-            <input type="text" id="${tagname}-${i}-value" name="${tagname}_tmp[${i}][value]" required>
+	    <input {%if "secret" in key%}type="password"{%else%}type="text"{%endif%} id="${tagname}-${i}-value" name="${tagname}_tmp[${i}][value]" required>
           </div>
           <div class="ml-2 mt-1">
+	    {%if "secret" in key%}<button type=button class='btn btn-sm btn-primary' onclick="eyeToggle('${tagname}-${i}')"><i class="far fa-eye"></i></button>{%endif%}
             <button type=button class='btn btn-sm btn-danger' href="" onclick="javascript:removePair('${tagname}'+ '-' + ${i} + ''); return false;"><i class="fas fa-trash-alt"></i></button>
           </div>
         </div>`;
@@ -32,7 +33,6 @@ document.getElementById('add-new-item').onclick = function () {
     container.appendChild(div);
 
     i++;
-
 
 }
 
@@ -92,4 +92,15 @@ function validatePair(tagname, i) {
     container.appendChild(div);
 }
 */
+</script>
+
+<script>
+function eyeToggle(elementId) {
+  var x = document.getElementById(elementId+'-value');
+  if (x.type === "password") {
+    x.type = "text";
+  } else {
+    x.type = "password";
+  }
+}
 </script>
