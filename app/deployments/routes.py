@@ -703,11 +703,16 @@ def createdep():
                 vault_token_renewal_time_duration = app.config.get("READ_TOKEN_RENEWAL_TIME_DURATION")
                 # Get token policy, otherwise set to read.
                 vault_policy = "read"
+                # Wrap token by default
+                vault_wrap_token = True
                 if inputs[key]:
                     vault_token_input = inputs[key]
                     vault_token_input = vault_token_input.replace("'",'"')
                     vault_token_input = json.loads(vault_token_input)
-                    vault_policy = vault_token_input['policy']
+                    if 'policy' in vault_token_input: 
+                        vault_policy = vault_token_input['policy']
+                    if 'wrap' in vault_token_input:
+                        vault_wrap_token = vault_token_input['wrap']
                     if vault_policy == "write":
                         vault_token_policy = app.config.get("WRITE_POLICY")
                         vault_token_token_time_duration = app.config.get("WRITE_TOKEN_TIME_DURATION")
@@ -726,22 +731,37 @@ def createdep():
                 # Retrieve vault client for wrapping token
                 vault_client = vaultservice.connect(jwt_token, vault_role)
 
-                # Get wrapping token
-                wrapping_token = vault_client.get_wrapping_token(vault_wrapping_token_time_duration,
-                                                                 vault_token_policy,
-                                                                 vault_token_time_duration,
-                                                                 vault_token_renewal_time_duration)
+                # Get token
+                if vault_wrap_token is True:
+                    app.logger.info("Get wrapping token.")
+                    token = vault_client.get_wrapping_token(vault_wrapping_token_time_duration,
+                                                            vault_token_policy,
+                                                            vault_token_time_duration,
+                                                            vault_token_renewal_time_duration)
+                else:
+                    app.logger.info("Get standard token.")
+                    token = vault_client.get_token(vault_token_policy,
+                                                   vault_token_time_duration,
+                                                   vault_token_renewal_time_duration)
 
                 # Add Vault endpoint, mountpoint policy and wrapping token to inputs.
-                inputs[key] = { "endpoint": vault_url, "mountpoint": vault_secrets_mountpoint, "policy": vault_policy, "wrapping_token": wrapping_token }
+                app.logger.info(vault_wrap_token)
+                inputs[key] = { "endpoint": vault_url, "mountpoint": vault_secrets_mountpoint, "policy": vault_policy, "token": token, "wrap": vault_wrap_token }
+                app.logger.info('===================')
+                app.logger.info(inputs[key])
+                app.logger.info('===================')
 
         # Secrets management section.
         # Both single secret and list of secrets are managed.
         # FIXME Consider what happens if VAULT is not enabled.
 
-        if value['type'] == 'secret':
+        if value['type'] == 'secret' or value['type'] == 'random_secret':
             app.logger.info("Upload secret to Hashicorp Vault and add its name to Vault secrets dictionary.")
             if app.config.get('FEATURE_VAULT_INTEGRATION') == 'yes':
+                # Generate random secret if required
+                # TODO make this secret generation configurable.
+                if value["type"] == "random_secret":
+                    inputs[key] = utils.generate_password()
                 vault_secrets_keys.append(key)
                 vault_secrets_dict_to_vault[key] = inputs[key]
                 inputs[key] = 'placeholder' # clean inputs

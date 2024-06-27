@@ -1,6 +1,6 @@
 <div class="mt-2">
     <div id="{{key}}-container"></div>
-    <button type="button" class="btn btn-sm btn-outline-info" id="add-new-item" class="add-new" data-tag-name="{{key}}">Add</button>
+    <button type="button" class="btn btn-sm btn-outline-info" id="add-new-item" class="add-new" data-tag-name="{{key}}" onclick="{{key}}_addItem(this)">Add</button>
     <input id="id-{{key}}" type="hidden" data-output-type="json" name="{{key}}" value=""/>
 </div>
 
@@ -8,9 +8,12 @@
 
 <script>
 
-let i = 1;
-document.getElementById('add-new-item').onclick = function () {
-    var tagname = this.getAttribute('data-tag-name');
+// initialize a unique counter:
+let {{key}}_idx = 1;
+
+function {{key}}_addItem(elem) {
+    i = {{key}}_idx;
+    var tagname = elem.getAttribute('data-tag-name');
     let template = `
         <div class="form-row" id="${tagname}-${i}">
           <div enctype='application/json' class="form-group">
@@ -33,6 +36,7 @@ document.getElementById('add-new-item').onclick = function () {
     container.appendChild(div);
 
     i++;
+    {{key}}_idx = i;
 
 }
 

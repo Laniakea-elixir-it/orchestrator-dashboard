@@ -51,10 +51,10 @@
 
           {% if deployment.status == 'CREATE_COMPLETE' %} <!-- Display these options only if the deployment is complete -->
             {% if session['userid'] == deployment.sub %} <!-- Show encryption info only if the deployment belong to user (thus avoiding admin) -->
-              <!-- Vault integration  if -->
+              <!-- Storage integration if -->
               {% if 'storage_encryption' in inputs and inputs['storage_encryption'] == 'True' %}
               <hr/>
-              <button type=button id="retrieveBtn" class="btn btn-small btn-outline-success" onclick="getVaultSecret( 'encryption', href='{{ url_for('vault_bp.read_encryption_key', depid=deployment.uuid, key=inputs['vault_encryption_key']) }}' )">
+              <button type=button id="retrieveBtn" class="btn btn-small btn-outline-success" onclick="getVaultSecret( 'encryption', 'encryption_key', href='{{ url_for('vault_bp.read_encryption_key', depid=deployment.uuid, key=inputs['vault_encryption_key']) }}' )">
                 <span class="fas fa-lock mr-2"></span>Retrieve LUKS passphrase
               </button>
               <!-- Modal Retrieve luks passphrase-->
@@ -75,7 +75,33 @@
                   </div>
                 </div>
               </div>
-              {% endif %} <!-- End encryption volume status if -->
+              {% endif %}
+
+              <!-- Enable laniakea utils if -->
+	      {% if enable_laniakea_utils == "yes" %}
+	      <!-- Encrypted volume status -->
+	      {% if 'storage_encryption' in inputs and inputs['storage_encryption'] == 'True' %}
+              <hr/>
+              <p>
+                <b>Encrypted volume status: </b>
+		<span class="badge" id="status_color"><span id="storage_status_icon" class="fas"></span></span>
+		<div class="encrypted_volume_section"></div>
+              </p>
+	      {% endif %}
+              <!-- End encrypted volume status-->
+	      <!-- Galaxy status -->
+              {% if '/galaxy' in deployment.endpoint %}
+              <hr/>
+              <p>
+                <b>Galaxy status: </b>
+                <span class="badge" id="galaxy_status_color"><span id="galaxy_status_icon" class="fas"></span></span>
+                <div class="galaxy_section"></div>
+              </p>
+              {% endif %}
+              <!-- End Galaxy status -->
+              {% endif %}
+	      <!-- End laniakea luks api volume status if -->
+
             {% endif %} <!-- end if user session -->
           {% endif %} <!-- End instance status if -->
         </div>
@@ -105,19 +131,19 @@
 	  {% set secrets_list = deployment.vault_secret_key.replace("'", "").replace("[", "").replace("]", "").split(', ') %}
 	  {% for k in secrets_list %}
 	  <p><strong>{{k}}</strong>:
-          <button type=button id="secretBtn-{{k}}" class="btn btn-sm btn-outline-success" onclick="getVaultSecret( 'secret', href='{{ url_for('vault_bp.read_secret', depid=deployment.uuid, key=k) }}' )">
+	  <button type=button id="secretBtn-{{k}}" class="btn btn-sm btn-outline-success" onclick="getVaultSecret( 'secret', '{{ k }}', href='{{ url_for('vault_bp.read_secret', depid=deployment.uuid, key=k) }}' )">
               <span class="fas fa-lock"></span>
           </button>
               <!-- Modal Retrieve secret -->
-              <div class="modal fade" id="secretModal">
+	      <div class="modal fade" id="secretModal_{{ k }}">
                 <div class="modal-dialog">
                   <div class="modal-content">
                     <div class="modal-header">
-                            <h5 class="modal-title" id="get_luks_passwd_label_{{deployment.uuid}}">Secret: {{ k }}</h5>
+			    <h5 class="modal-title" id="get_luks_passwd_label_{{deployment.uuid}}_{{ k }}">Secret: {{ k }}</h5>
                       <button type="button" class="close" data-dismiss="modal">&times;</button>
                     </div>
                     <div class="modal-body">
-                    <input id="userSecret" class="form-control" type="password">
+                    <input id="userSecret_{{k}}" class="form-control" type="password">
                     </div>
                     <div class="modal-footer">
                       <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
@@ -138,7 +164,12 @@
 
 <script>
   $('#luksPassphrase').password();
-  $('#userSecret').password();
+  {% if deployment.vault_secret_key != '[]'  %}
+  {% set secrets_list = deployment.vault_secret_key.replace("'", "").replace("[", "").replace("]", "").split(', ') %}
+  {% for k in secrets_list %}
+  $('#userSecret_{{k}}').password();
+  {% endfor %}
+  {% endif %}
 </script>
 
 <script>
@@ -173,7 +204,7 @@ $(document).ready(function () {
 
 <script>
 
-async function getVaultSecret(type,url)
+async function getVaultSecret(type,key,url)
 {
   let secret = "secret placeholder";
 
@@ -181,13 +212,13 @@ async function getVaultSecret(type,url)
   let result = await response;
   secret = await response.text();
 
-  fillModal(type,secret);
+  fillModal(type,key,secret);
   stopSpinner();
 };
 
-function fillModal(type,secret)
+function fillModal(type,key,secret)
 {
-    modal_type="#secretModal"
+    modal_type='#secretModal_'+key
     if(type=='encryption'){
       modal_type="#newModal"
     }
@@ -224,5 +255,139 @@ function stopSpinner()
   }
 }
 </script>
+
+<!-- Laniakea Utils section -->
+
+<!--script>
+window.onload = function() {
+  console.log('test')
+}
+</script-->
+
+<script>
+$(document).ready(function(){
+  $('[data-toggle="tooltip"]').tooltip()
+});
+</script>
+
+<script>
+
+// Galaxy section
+{% if '/galaxy' in deployment.endpoint %}
+
+checkGalaxyStatus = () => {
+  temp = check_status('{{ url_for('laniakea_utils_bp.is_online', depid=deployment.uuid) }}')
+
+  let g_sc = document.getElementById("galaxy_status_color");
+  let g_si = document.getElementById("galaxy_status_icon");
+  temp.then(value => {
+    if( value == '200' || value == '302') {
+      g_sc.className = "badge badge-pill badge-success";
+      g_si.className = "fas fa-globe-europe mr-2";
+      $('#galaxy_status_color span').text(' On-line ');
+    } else {
+      g_sc.className = "badge badge-pill badge-danger";
+      g_si.className = "fas fa-unlink mr-2";
+      $('#galaxy_status_color span').text(' Off-line ');
+
+      {% if enable_luks_api_integration == "yes" and 'storage_encryption' in inputs and inputs['storage_encryption'] == 'True' %}
+      promise_storage_encryption_status = check_status('{{ url_for('luks_api_bp.encrypted_volume_status', depid=deployment.uuid) }}')
+      promise_storage_encryption_status.then(value => {
+
+        var storage_encryption_status = value
+        if (storage_encryption_status == 'unmounted') {
+          var galaxy_startup_btn = `<span class="d-inline-block" tabindex="0" data-toggle="tooltip" title="Please mount the encrypted storage volume before">
+                       <button type="button" class="btn btn-outline-danger btn-sm" style="pointer-events: none;" disabled>
+                       <span class="fas fa-key mr-2"></span>Try to restart Galaxy
+                     </button>
+                  </span>`
+        } else {
+          var galaxy_startup_btn = `<button id="galaxyStartupBtn" class="btn btn-outline-danger btn-sm" role="button" onclick="galaxyStartup( href='{{ url_for('laniakea_utils_bp.galaxy_startup', depid=deployment.uuid) }}' )">
+                       <span class="fas fa-key mr-2"></span>Try to restart Galaxy
+                     </button>`
+        }
+        $('.galaxy_section').append(galaxy_startup_btn);
+
+      });
+      {% endif %}
+
+    }
+  });
+
+}
+
+async function galaxyStartup(url)
+{
+
+  $('#galaxyStartupBtn').html( `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> This may take some time. Please wait!` );
+  $('#galaxyStartupBtn').prop('disabled', true);
+
+  let response = await fetch(url)
+  let result = await response;
+  galaxy_status = await response.text()
+  reload_page()
+}
+
+document.getElementById("galaxy_status_color").onload = checkGalaxyStatus();
+
+{% endif %}
+
+// Storage encryption section
+{% if enable_luks_api_integration == "yes" %}
+{% if 'storage_encryption' in inputs and inputs['storage_encryption'] == 'True' %}
+
+checkLUKSVolumeStatus = () => {
+  let sc = document.getElementById("status_color");
+  let si = document.getElementById("storage_status_icon");
+  temp = check_status('{{ url_for('luks_api_bp.encrypted_volume_status', depid=deployment.uuid) }}')
+  temp.then(value => {
+    if( value == 'mounted') {
+      sc.className = "badge badge-pill badge-success";
+      si.className = "fas fa-lock-open mr-2";
+      $('#status_color span').text(' Mmounted ');
+    } else if (value == "unmounted") {
+      sc.className = "badge badge-pill badge-danger";
+      si.className = "fas fa-lock mr-2";
+      $('#status_color span').text(' Unmounted ');
+      var luksbtn = `<button type="button" id="luksOpenBtn" class="btn btn-outline-danger btn-sm" onclick="mountLUKSVolume( href='{{ url_for('luks_api_bp.encrypted_volume_open', depid=deployment.uuid) }}' )">
+                       <span class="fas fa-key mr-2"></span>Unlock and mount volume
+                     </button>`
+      $('.encrypted_volume_section').append(luksbtn);
+    } else {
+      sc.className = "badge badge-pill badge-warning";
+      $('#status_color span').text(' Unavailable ');
+    }
+  });
+}
+
+async function mountLUKSVolume(url)  {
+  $('#luksOpenBtn').html( `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...` );
+  $('#luksOpenBtn').prop('disabled', true);
+  let response = await fetch(url);
+  let result = await response;
+  encrypted_volume_status = await response.text();
+  reload_page();
+}
+
+function reload_page() {
+  location.reload();
+}
+
+document.getElementById("status_color").onload = checkLUKSVolumeStatus();
+
+{% endif %}
+{% endif %}
+
+// Common section
+async function check_status(url)
+{
+  let response = await fetch(url);
+  let result = await response;
+  _status = await response.text();
+  return _status;
+}
+
+</script>
+<!-- Laniakea Utils section -->
 
 {% endblock %}

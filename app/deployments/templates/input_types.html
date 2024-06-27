@@ -15,7 +15,7 @@
 {% endif %}
 
 <div class="form-group" id="form-group-{{key}}" {{ hidden }}>
-  {% if (value.type is not defined or (value.type != "hidden" and value.type != "swift_token" and value.type != "swift_autouuid" and value.type != "random_password" and value.type != "openstack_ec2credentials" and value.type != "uuidgen" and value.type != "ldap_user" and value.type != "ssh_user" and value.type != "userinfo" and value.type != "vault_token" and value.type != "vault_secret_path" ))
+  {% if (value.type is not defined or (value.type != "hidden" and value.type != "swift_token" and value.type != "swift_autouuid" and value.type != "random_password" and value.type != "openstack_ec2credentials" and value.type != "uuidgen" and value.type != "ldap_user" and value.type != "ssh_user" and value.type != "userinfo" and value.type != "vault_token" and value.type != "vault_secret_path" and value.type != "random_secret" ))
           and (update == False or value.updatable is not defined or value.updatable == True)%}
   <label for="{{key}}">
     {% if value.display_name is defined %}
@@ -106,6 +106,11 @@
     {% elif value.type == "secret" %}
       <input type="password" class="form-control" data-type="{{value.type}}" id="{{key}}" name="{{key}}" data-toggle="password" placeholder="Enter your secret" {% if value.required %}required{%endif%} {{mode}}>
     <!-- end secret type -->
+
+    <!-- random_secret type -->
+    {% elif value.type == "random_secret" %}
+      <input type="hidden" class="form-control" data-type="{{value.type}}" id="{{key}}" name="{{key}}" value="">
+    <!-- end random_secret type -->
 
     <!-- list secrets type -->
     {% elif value.type == "list_secrets" and value.entry_schema.type|lower == "map" %}

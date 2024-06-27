@@ -88,7 +88,11 @@ def inject_settings():
         s3_allowed_groups=app.config.get("S3_IAM_GROUPS") if app.config.get("S3_IAM_GROUPS") else [],
         enable_access_request=app.config.get("FEATURE_ACCESS_REQUEST") if app.config.get(
             'FEATURE_ACCESS_REQUEST') else "no",
-        not_granted_access_tag=app.config.get("NOT_GRANTED_ACCESS_TAG")
+        not_granted_access_tag=app.config.get("NOT_GRANTED_ACCESS_TAG"),
+        enable_luks_api_integration=app.config.get('EXTRA_FEATURE_LUKS_API_INTEGRATION') if app.config.get(
+            'EXTRA_FEATURE_LUKS_API_INTEGRATION') else "no",
+        enable_laniakea_utils=app.config.get('EXTRA_FEATURE_LANIAKEA_UTILS_INTEGRATION') if app.config.get(
+            'EXTRA_FEATURE_LANIAKEA_UTILS_INTEGRATION') else "no"
     )
 
 
@@ -151,6 +155,14 @@ app.register_blueprint(services_bp, url_prefix="/services")
 if app.config.get("FEATURE_VAULT_INTEGRATION") == "yes":
     from app.vault.routes import vault_bp
     app.register_blueprint(vault_bp, url_prefix="/vault")
+
+if app.config.get("EXTRA_FEATURE_LUKS_API_INTEGRATION") == "yes":
+    from app.extra.luks_api.routes import luks_api_bp
+    app.register_blueprint(luks_api_bp, url_prefix="/luks_api")
+
+if app.config.get("EXTRA_FEATURE_LANIAKEA_UTILS_INTEGRATION") == "yes":
+    from app.extra.laniakea_utils.routes import laniakea_utils_bp
+    app.register_blueprint(laniakea_utils_bp, url_prefix="/laniakea_utils")
 
 # logging
 loglevel = app.config.get("LOG_LEVEL") if app.config.get("LOG_LEVEL") else "INFO"
