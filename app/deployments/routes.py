@@ -446,7 +446,7 @@ def updatedep():
 
     form_data = request.form.to_dict()
 
-    app.logger.debug("Form data: " + json.dumps(form_data)) # FIXME: this is going to print secrets on dashboard logs
+    #app.logger.debug("Form data: " + json.dumps(form_data)) # FIXME: this is going to print secrets on dashboard logs
 
     depid = form_data['_depid']
 
@@ -745,11 +745,7 @@ def createdep():
                                                    vault_token_renewal_time_duration)
 
                 # Add Vault endpoint, mountpoint policy and wrapping token to inputs.
-                app.logger.info(vault_wrap_token)
                 inputs[key] = { "endpoint": vault_url, "mountpoint": vault_secrets_mountpoint, "policy": vault_policy, "token": token, "wrap": vault_wrap_token }
-                app.logger.info('===================')
-                app.logger.info(inputs[key])
-                app.logger.info('===================')
 
         # Secrets management section.
         # Both single secret and list of secrets are managed.
