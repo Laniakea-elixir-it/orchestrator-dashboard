@@ -49,6 +49,7 @@ def encrypted_volume_status(depid=None):
 
         if 'node_ip' in outputs_dict:
             api_status = api_status + outputs_dict['node_ip'] + ':' + lusk_api_port + luks_api_status_route
+            app.logger.debug(f'URL CHE USA DASHBOARD PER PARLARE CON API: {api_status}')
         else:
             return 'unavailable'
 

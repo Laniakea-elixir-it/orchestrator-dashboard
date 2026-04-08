@@ -19,7 +19,7 @@
 {% elif (stoutputs[k] and stoutputs[k]['type'] == 'url') or "url" in k or "endpoint" in k %}
 {% if "vpn_client_conf_url" in k %}
 <p><strong>OpenVPN configuration file</strong>:
-<a href="{{v}}" download target="_blank">
+<a href='{{ url_for('vault_bp.download_ovpn', vpn_conf_filename=v) }}' download target="_blank">
 <button class="btn btn-primary"><i class="fa fa-download"></i> Save Link As...</button>
 </a>
 </p>

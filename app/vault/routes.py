@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from flask import Blueprint, render_template, flash, request, redirect, url_for, session, json
+from flask import Blueprint, render_template, flash, request, redirect, url_for, session, json, Response
 from app import app, iam_blueprint, vaultservice
 from app.lib import auth, sshkey as sshkeyhelpers, settings, dbhelpers
 from app.providers import sla
@@ -316,3 +316,48 @@ def delete_service_creds():
     flash("Credentials successfully deleted!", 'info')
 
     return redirect(url_for('vault_bp.manage_service_creds'))
+
+
+@vault_bp.route('/read_vpnconfiles/<vpn_conf_filename>/download')
+@auth.authorized_with_valid_token
+def download_ovpn(vpn_conf_filename):
+
+    vault_bound_audience = app.config.get('VAULT_BOUND_AUDIENCE')
+    vault_mountpoint_kv1 = app.config.get('VAULT_MOUNTPOINT_KV1')
+    vault_mountpoint_kv2 = app.config.get('VAULT_MOUNTPOINT_KV2')
+    vault_role = app.config.get("VAULT_ROLE")
+    vault_read_policy = app.config.get("READ_POLICY")
+    vault_read_token_time_duration = app.config.get("READ_TOKEN_TIME_DURATION")
+    vault_read_token_renewal_duration = app.config.get("READ_TOKEN_RENEWAL_TIME_DURATION")
+
+    access_token = iam_blueprint.session.token['access_token']
+
+    jwt_token = auth.exchange_token_with_audience(iam_base_url,
+                                                  iam_client_id, iam_client_secret, access_token, vault_bound_audience)
+
+    vault_client = vaultservice.connect(jwt_token, vault_role)
+
+    read_token = vault_client.get_token(vault_read_policy, vault_read_token_time_duration,
+                                 vault_read_token_renewal_duration)
+
+    secret_path = f'vpn/{vpn_conf_filename}'
+    secret_key = 'vpnconfile'
+    try:
+        import base64
+        response_output = base64.b64decode(
+            vault_client.read_secret(read_token, secret_path, secret_key)
+        ).decode('utf-8')
+
+    except Exception as e:
+        app.logger.warning("Error retrieving ovpn file: {}".format(str(e)))
+        response_output = "Not Available"
+
+    vault_client.revoke_token()
+
+    #return response_output
+
+    return Response(
+        response_output,
+        mimetype='application/octet-stream',
+        headers={ 'Content-Disposition': f'attachment; filename={vpn_conf_filename}' }
+    )
