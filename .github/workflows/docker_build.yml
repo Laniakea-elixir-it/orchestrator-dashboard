@@ -30,7 +30,7 @@ jobs:
         id: docker_meta
         uses: docker/metadata-action@v5
         with:
-          images: indigodatacloud/orchestrator-dashboard
+          images: laniakeacloud/laniakea-dashboard
           tags: |
             type=sha
             type=ref,event=branch
