@@ -36,6 +36,8 @@
                                     <span class="badge bg-danger text-white"><i class="fa fa-cog"></i> live</span>
                                 {% elif tag == 'vpn' %}
                                     <span class="badge bg-warning text-dark"><i class="fa fa-lock"></i> vpn</span>
+		                {% elif tag == 'cluster' %}
+                                    <span class="badge bg-info text-white"><i class="fa fa-server"></i> cluster</span>
                                 {% else %}
                                     <span class="badge bg-primary text-white"><i class="fa fa-tag"></i> {{ tag }}</span>
                                 {% endif %}
