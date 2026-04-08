@@ -76,7 +76,11 @@
             "properties": {
                 "name": { "type": "string" },
                 "option": { "type": "string" },
-                "description": { "type": "string" }
+                "description": { "type": "string" },
+		"tags": {
+                    "type": "array",
+                    "items": { "type": "string" }
+                }
             },
             "additionalProperties": false,
             "if":

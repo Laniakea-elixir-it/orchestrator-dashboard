@@ -18,19 +18,36 @@
 
         <div class="card-body">
           <form id="depSelect" action="{{ url_for('deployments_bp.configure')}}" method="post">
+
                 {% for template in templates %}
-                <div class="form-check">
-                    <input class="form-check-input" type="radio" id="choice{{loop.index}}" name="selected_tosca" value="{{ template['name'] }}" {% if loop.index==1 %}checked{% endif %}  >
-                    <label class="form-check-label" for="choice{{loop.index}}">{{ template['option'] }}</label>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="radio" id="choice{{loop.index}}" name="selected_tosca" value="{{ template['name'] }}" {% if loop.index==1 %}checked{% endif %}>
+                    <label class="form-check-label" for="choice{{loop.index}}">
+                        {{ template['option'] }}
+                        <br>
+                        <small class="text-muted">{{ template['description'] }}</small>
+                        {% if template.get('tags') %}
+                        <br>
+                        <div class="mt-1">
+                            {% for tag in template['tags'] %}
+                                {% if tag == 'express' %}
+                                    <span class="badge bg-success text-white"><i class="fa fa-train"></i> express</span>
+                                {% elif tag == 'live' %}
+                                    <span class="badge bg-danger text-white"><i class="fa fa-cog"></i> live</span>
+                                {% elif tag == 'vpn' %}
+                                    <span class="badge bg-warning text-dark"><i class="fa fa-lock"></i> vpn</span>
+                                {% else %}
+                                    <span class="badge bg-primary text-white"><i class="fa fa-tag"></i> {{ tag }}</span>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </label>
                 </div>
-                {% if template['description'] %}
-                <p>
-                    {{template['description'] | safe }}
-                </p>
-                {% endif %}
                 {% endfor %}
+
                 <br>
-                <button type="submit" class="btn btn-success submitBtn">Submit</button>
+                <button type="submit" class="btn btn-success submitBtn">Next</button>
                 <button id="cancelBtn" type=button class="btn btn-small btn-primary" onclick="location.href='{{ url_for('home_bp.portfolio') }}'">
                 <span class="fas fa-ban mr-2"></span>Cancel</button>
           </form>
