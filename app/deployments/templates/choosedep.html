@@ -17,42 +17,48 @@
         </div>
 
         <div class="card-body">
-          <form id="depSelect" action="{{ url_for('deployments_bp.configure')}}" method="post">
+            <form id="depSelect" action="{{ url_for('deployments_bp.configure')}}" method="post">
 
-                {% for template in templates %}
-                <div class="form-check mb-3">
-                    <input class="form-check-input" type="radio" id="choice{{loop.index}}" name="selected_tosca" value="{{ template['name'] }}" {% if loop.index==1 %}checked{% endif %}>
-                    <label class="form-check-label" for="choice{{loop.index}}">
-                        {{ template['option'] }}
-                        <br>
-                        <small class="text-muted">{{ template['description'] }}</small>
-                        {% if template.get('tags') %}
-                        <br>
-                        <div class="mt-1">
-                            {% for tag in template['tags'] %}
+            {% for template in templates %}
+            <div class="form-check mb-3 {% if loop.first and 'recommended' in template.get('tags', []) %}border border-primary rounded p-3{% endif %}"
+                 style="{% if loop.first and 'recommended' in template.get('tags', []) %}background-color: rgba(13, 110, 253, 0.08); {% endif %}padding-left: 2.5em !important;">
+                <input class="form-check-input" type="radio" id="choice{{loop.index}}" name="selected_tosca" value="{{ template['name'] }}" {% if loop.index==1 %}checked{% endif %}>
+                <label class="form-check-label" for="choice{{loop.index}}">
+                    {{ template['option'] }}
+                    {% if loop.first and 'recommended' in template.get('tags', []) %}
+                    <span class="badge border border-primary text-primary ms-2" style="font-size: 11px; background-color: rgba(13, 110, 253, 0.08);">RECOMMENDED</span>
+                    {% endif %}
+                    <br>
+                    <small class="text-muted">{{ template['description'] }}</small>
+                    {% if template.get('tags') %}
+                    <br>
+                    <div class="mt-1">
+                        {% for tag in template['tags'] %}
+                	    {% if tag != 'recommended' %}
                                 {% if tag == 'express' %}
                                     <span class="badge bg-success text-white"><i class="fa fa-train"></i> express</span>
                                 {% elif tag == 'live' %}
-  				    <span class="badge bg-danger text-white"><i class="fa fa-hourglass-half"></i> live</span>
+                		    <span class="badge bg-danger text-white"><i class="fa fa-hourglass-half"></i> live</span>
                                 {% elif tag == 'vpn' %}
                                     <span class="badge bg-warning text-dark"><i class="fa fa-lock"></i> vpn</span>
-		                {% elif tag == 'cluster' %}
+                	        {% elif tag == 'cluster' %}
                                     <span class="badge bg-info text-white"><i class="fa fa-server"></i> cluster</span>
                                 {% else %}
                                     <span class="badge bg-primary text-white"><i class="fa fa-tag"></i> {{ tag }}</span>
                                 {% endif %}
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                    </label>
-                </div>
-                {% endfor %}
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </label>
+            </div>
+            {% endfor %}
 
-                <br>
-                <button type="submit" class="btn btn-success submitBtn">Next</button>
-                <button id="cancelBtn" type=button class="btn btn-small btn-primary" onclick="location.href='{{ url_for('home_bp.portfolio') }}'">
-                <span class="fas fa-ban mr-2"></span>Cancel</button>
-          </form>
+            <br>
+            <button type="submit" class="btn btn-success submitBtn">Next</button>
+            <button id="cancelBtn" type=button class="btn btn-small btn-primary" onclick="location.href='{{ url_for('home_bp.portfolio') }}'">
+            <span class="fas fa-ban mr-2"></span>Cancel</button>
+            </form>
         </div>
     </div>
 </div>
