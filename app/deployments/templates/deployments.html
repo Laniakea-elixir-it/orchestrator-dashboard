@@ -1,286 +1,395 @@
 {% extends "base.html" %}
 {% block content %}
-<!-- Column indexes for FEATURE_HIDDEN_DEPLOYMENT_COLUMNS setting
-
-    0 = description
-    1 = uuid
-    2 = status
-    3 = creation time
-    4 = update time
-    5 = endpoint
-    6 = provider name
-    7 = physical id (infrastructure id)
-
-    value must be comma separated (i.e.  "4, 6, 7")
-
-    Empty string or missing setting means no hidden columns
+<!--
+    Column indexes for FEATURE_HIDDEN_DEPLOYMENT_COLUMNS:
+    0 = description  |  1 = uuid       |  2 = status
+    3 = creation time|  4 = update time|  5 = endpoint
+    6 = provider name|  7 = physical id
+    Comma-separated, e.g. "4, 6, 7". Empty = no hidden columns.
 -->
-
-<div class="container-fluid">
+ 
 {% set ar = namespace(found=false) %}
-  <br>
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-          <div class="row">
-            <div class="col-md-6">
-              <!-- Title -->
-              <h4 class="font-weight-bold text-primary">My deployments</h4>
-            </div>
-            <div class="col-md-6 text-right">
-              <!-- Button -->
-              <button type=button class='btn btn-outline-secondary' onclick='location.href="{{ url_for('deployments_bp.showdeployments') }}"'><span class='fas fa-sync mr-2'></span>Refresh</button>
-              <button type=button class='btn btn-primary' onclick='location.href="{{ url_for('home') }}"'><span class='fas fa-plus mr-2'></span>New deployment</button>
-            </div>
-          </div> <!-- / .row -->
+ 
+<div class="container-fluid py-4 px-4">
+ 
+    <!-- ── Page header ── -->
+    <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-3">
+        <div>
+            <h1 class="fs-5 mb-1">My Deployments</h1>
+            <p class="text-muted mb-0" style="font-size:.875rem">
+                Manage your active cloud deployments
+            </p>
         </div>
-        <div class="card-body">
-
-    <div class="table-responsive" style="overflow:inherit;">
-    <table class="table table-striped table-hover" id="tableUserDeployments" width="100%" cellspacing="0">
-    <!--Table head-->
-      <thead>
-        <tr>
-	      <th>Description</th>
-          <th>Deployment identifier</th>
-          <th>Status</th>
-          <th>Creation time</th>
-          <th>Update time</th>
-          <th>Endpoint</th>
-          <th>Deployed at</th>
-          <th>Physical Id</th>
-          <th>Actions</th>
-         </tr>
-      </thead>
-      <!--Table head-->
-      <!--Table body-->
-      <tbody>
-        {% for deployment in deployments %}
-        {% if "IN_PROGRESS" in deployment.status %}
-             {% set ar.found = true %}
-        {% endif %}
-        <tr>
-            <td><strong>{{deployment.description}}</strong></td>
-            <td><a href="{{ url_for('deployments_bp.depoutput', depid=deployment.uuid) }}">{{deployment.uuid}}</a></td>
-            <td>
-                {% if "COMPLETE" in deployment.status %}
-                <span class="badge badge-success"/>
-                {% elif "FAIL" in deployment.status %}
-                <span class="badge badge-danger"/>
-                {% else %}
-                <span class="badge badge-warning text-white"><span class="spinner-grow spinner-grow-sm"/></span>
-                {% endif %}
-                {{deployment.status}}
-            </td>
-            <td>{{deployment.creation_time}}</td>
-            <td>{{deployment.update_time}}</td>
-            <td>{{deployment.endpoint}}</td>
-            <td>{{deployment.provider_name}}</td>
-            <td>{{deployment.physicalId}}</td>
-            <td>
-              <div class="btn-group">
-                <!-- DETAILS -->
-               <a class="btn btn-info btn-sm" href="{{ url_for('deployments_bp.depoutput', depid=deployment.uuid) }}"><span class="fas fa-bars mr-2 grey-text"></span>Details</a>
-                <button type="button" class="btn btn-info dropdown-toggle dropdown-toggle-split" data-toggle="dropdown">
-                  <span class="sr-only">Toggle Dropdown</span>
-                </button>
-                <div class="dropdown-menu">
-                    <a class="dropdown-item" data-toggle="modal" data-target="#editDeployment" data-id="{{ deployment.uuid }}" data-description="{{ deployment.description }}" data-action="{{ url_for('deployments_bp.editdeployment') }}">
-                        <span class="fas fa-edit mr-2 grey-text"></span>Edit</a>
-                    <a class="dropdown-item" href="{{ url_for('deployments_bp.deptemplate', depid=deployment.uuid) }}"><span class="fas fa-search mr-2 grey-text"></span>Show template</a>
-                  {% if enable_update_deployment == "yes" and deployment.updatable == 1 %}
-                    <a class="dropdown-item" href="{{ url_for('deployments_bp.depupdate', depid=deployment.uuid) }}"><span class="fas fa-plus-minus mr-2 grey-text"></span>Add/Remove nodes</a>
-                  {% endif %}
-                  {% if deployment.deployment_type == "CLOUD" %}
-                      <a class="dropdown-item {% if deployment.physicalId is not defined %}disabled{% endif %}" href="{{ url_for('deployments_bp.deplog', depid=deployment.uuid) }}">
-                          <span class="fas fa-file-alt mr-2 grey-text"></span>Log</a>
-                      {% if enable_ports_request == "yes" %}
-                      <a class="dropdown-item" data-toggle="modal" data-target="#requestPorts" data-id="{{ deployment.uuid }}" data-action="{{ url_for('deployments_bp.sendportsrequest') }}" >
-                          <span class="fas fa-ticket-alt mr-2 grey-text"></span>Request Ports</a>
-                     {% endif %}
-                  {% endif %}
-                  {% if deployment.deployment_type == "CLOUD" %}
-                      <a class="dropdown-item {% if deployment.physicalId is not defined %}disabled{% endif %}" href="{{ url_for('deployments_bp.depinfradetails', depid=deployment.uuid) }}">
-                          <span class="fas fa-desktop mr-2 grey-text"></span>Manage VMs</a>
-                  {% endif %}
-                  {% if deployment.deployment_type == "QCG" %}
-                      <a class="dropdown-item {% if deployment.physicalId is not defined %}disabled{% endif %}" href="{{ url_for('deployments_bp.depqcgdetails', depid=deployment.uuid) }}">
-                          <span class="fas fa-bars mr-2 grey-text"></span>Job details</a>
-                  {% endif %}
-                  {% if deployment.locked == 0 %}
-                    <a class="dropdown-item" href="{{ url_for('deployments_bp.lockdeployment', depid=deployment.uuid) }}"><span class="fas fa-lock mr-2"></span>Lock</a>
-                    <a class="dropdown-item" style="color: red;" href="#delete_confirm_{{deployment.uuid}}" data-toggle="modal" data-backdrop="static" data-keyboard="false"
-                       data-target="#delete_confirm_{{deployment.uuid}}"><span class="fas fa-trash-alt mr-2"></span>Delete</a>
-                  {% else %}
-                    <a class="dropdown-item" href="{{ url_for('deployments_bp.unlockdeployment', depid=deployment.uuid) }}"><span class="fas fa-lock-open mr-2"></span>Unlock</a>
-                  {% endif %}
-
-                </div>
-              </div>
-            </td>
-        </tr>
-        <!-- Modal DELETE -->
-        <div class="modal fade" id="delete_confirm_{{deployment.uuid}}" role="dialog">
-          <div class="modal-dialog" role="document">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title" id="delete_confirm_label_{{deployment.uuid}}">Confirm deployment deletion</h5>
-                <button type="button" class="close" data-dismiss="modal">&times;</button>
-              </div>
-              <div class="modal-body">
-                Do you really want to delete the deployment {{deployment.uuid}} ?
-              </div>
-              <div class="modal-footer">
-                <a class="btn btn-primary cancelBtn" role="button" data-dismiss="modal">Cancel</a>
-                <a class="btn btn-danger deleteBtn" role="button" href="{{ url_for("deployments_bp.depdel", depid=deployment.uuid) }}">Delete deployment</a>
-              </div>
-            </div>
-          </div>
-        </div>
-        {% endfor %}
-      </tbody>
-      <!--Table body-->
-    </table>
-    </div>
-    </div>
-    </div>
-    <br><br>
-    <!-- Modal REQUEST PORTS -->
-    <div class="modal fade" id="requestPorts" tabindex="-1" role="dialog" aria-labelledby="requestPorts" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header px-lg-5">
-                    <h5 class="modal-title" id="listingModalLabel">Request Ports</h5>
-                    <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-                </div>
-                <div class="modal-body">
-                    <form id="requestform" action="#" method="post">
-                        <div class="form-group">
-                            <label for="username"><strong>User</strong></label>
-                            <div>
-                                <input type="text" class="form-control" name="username" id="username" value="{{ session['username'] }}" disabled>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="email"><strong>Mail</strong></label>
-                            <div>
-                                <input type="email" class="form-control" name="email" id="email" value="{{ session['useremail'] }}" data-toggle="email">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="message">Message</label>
-                            <textarea required class="form-control" name="message" id="message" placeholder="Please, provide the list of ports to be opened." rows="3"></textarea>
-                        </div>
-                        <input type="hidden" name="deployment_uuid" value="">
-                        <div class="form-group">
-                            <div>
-                                <button type="submit" class="btn btn-success">Submit</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
-                </div>
-            </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-light"
+                    onclick='location.href="{{ url_for("deployments_bp.showdeployments") }}"'>
+                <i class="fas fa-sync me-2" style="font-size:.8rem"></i>Refresh
+            </button>
+            <button type="button" class="btn btn-primary"
+                    onclick='location.href="{{ url_for("home") }}"'>
+                <i class="fas fa-plus me-2" style="font-size:.8rem"></i>New deployment
+            </button>
         </div>
     </div>
-    <!-- Modal EDIT DEPLOYMENT -->
-    <div class="modal fade" id="editDeployment" tabindex="-1" role="dialog" aria-labelledby="editDeployment" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header px-lg-5">
-                    <h5 class="modal-title">Edit</h5>
-                    <button class="close" type="button" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-                </div>
-                <div class="modal-body">
-                    <form id="editform" action="#" method="post">
-                        <div class="form-group">
-                            <label for="description"><strong>Description</strong></label>
-                            <div>
-                                <input type="text" class="form-control" maxlength="50" name="description" id="description" value="">
+ 
+    <!-- ── Table card ── -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive" style="overflow:inherit;">
+                <table class="table table-hover mb-0" id="tableUserDeployments" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>UUID</th>
+                            <th>Status</th>
+                            <th>Created</th>
+                            <th>Updated</th>
+                            <th>Endpoint</th>
+                            <th>Provider</th>
+                            <th>Physical ID</th>
+                            <th class="no-sort">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+ 
+                    {% for deployment in deployments %}
+ 
+                    {% if "IN_PROGRESS" in deployment.status %}
+                        {% set ar.found = true %}
+                    {% endif %}
+ 
+                    <tr>
+                        <!-- Description -->
+                        <td><strong>{{ deployment.description }}</strong></td>
+ 
+                        <!-- UUID -->
+                        <td>
+                            <a href="{{ url_for('deployments_bp.depoutput', depid=deployment.uuid) }}"
+                               style="font-family:var(--bs-font-monospace);font-size:.8rem;color:var(--ln-blue)">
+                                {{ deployment.uuid }}
+                            </a>
+                        </td>
+ 
+                        <!-- Status -->
+                        <td>
+                            {% if "COMPLETE" in deployment.status %}
+                                <span class="badge bg-success">
+                                    <i class="fas fa-check me-1"></i>{{ deployment.status }}
+                                </span>
+                            {% elif "FAIL" in deployment.status %}
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-times me-1"></i>{{ deployment.status }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-warning">
+                                    <span class="spinner-grow spinner-grow-sm me-1"
+                                          style="width:.6rem;height:.6rem"></span>{{ deployment.status }}
+                                </span>
+                            {% endif %}
+                        </td>
+ 
+                        <!-- Times -->
+                        <td style="font-size:.8rem;color:#9aaab8;white-space:nowrap">{{ deployment.creation_time }}</td>
+                        <td style="font-size:.8rem;color:#9aaab8;white-space:nowrap">{{ deployment.update_time }}</td>
+ 
+                        <!-- Endpoint -->
+                        <td style="font-size:.8rem">
+                            {% if deployment.endpoint %}
+                            <a href="{{ deployment.endpoint }}" target="_blank"
+                               style="color:var(--ln-blue);word-break:break-all">
+                                {{ deployment.endpoint }}
+                            </a>
+                            {% endif %}
+                        </td>
+ 
+                        <!-- Provider -->
+                        <td style="font-size:.8rem">{{ deployment.provider_name }}</td>
+ 
+                        <!-- Physical ID -->
+                        <td style="font-family:var(--bs-font-monospace);font-size:.75rem;color:#9aaab8">
+                            {{ deployment.physicalId }}
+                        </td>
+ 
+                        <!-- Actions -->
+                        <td>
+                            <div class="btn-group btn-group-sm">
+ 
+                                <!-- Details (primary action) -->
+                                <a class="btn btn-light"
+                                   href="{{ url_for('deployments_bp.depoutput', depid=deployment.uuid) }}">
+                                    <i class="fas fa-bars me-1"></i>Details
+                                </a>
+ 
+                                <!-- Dropdown split -->
+                                <button type="button"
+                                        class="btn btn-light dropdown-toggle dropdown-toggle-split"
+                                        data-bs-toggle="dropdown" aria-expanded="false">
+                                    <span class="visually-hidden">Toggle Dropdown</span>
+                                </button>
+ 
+                                <ul class="dropdown-menu dropdown-menu-end">
+ 
+                                    <!-- Edit -->
+                                    <li>
+                                        <a class="dropdown-item"
+                                           data-bs-toggle="modal" data-bs-target="#editDeployment"
+                                           data-id="{{ deployment.uuid }}"
+                                           data-description="{{ deployment.description }}"
+                                           data-action="{{ url_for('deployments_bp.editdeployment') }}">
+                                            <i class="fas fa-edit me-2" style="width:14px;color:#9aaab8"></i>Edit
+                                        </a>
+                                    </li>
+ 
+                                    <!-- Show template -->
+                                    <li>
+                                        <a class="dropdown-item"
+                                           href="{{ url_for('deployments_bp.deptemplate', depid=deployment.uuid) }}">
+                                            <i class="fas fa-search me-2" style="width:14px;color:#9aaab8"></i>Show template
+                                        </a>
+                                    </li>
+ 
+                                    <!-- Add/Remove nodes -->
+                                    {% if enable_update_deployment == "yes" and deployment.updatable == 1 %}
+                                    <li>
+                                        <a class="dropdown-item"
+                                           href="{{ url_for('deployments_bp.depupdate', depid=deployment.uuid) }}">
+                                            <i class="fas fa-plus-minus me-2" style="width:14px;color:#9aaab8"></i>Add/Remove nodes
+                                        </a>
+                                    </li>
+                                    {% endif %}
+ 
+                                    <!-- CLOUD-specific -->
+                                    {% if deployment.deployment_type == "CLOUD" %}
+                                    <li>
+                                        <a class="dropdown-item {% if deployment.physicalId is not defined %}disabled{% endif %}"
+                                           href="{{ url_for('deployments_bp.deplog', depid=deployment.uuid) }}">
+                                            <i class="fas fa-file-alt me-2" style="width:14px;color:#9aaab8"></i>Log
+                                        </a>
+                                    </li>
+                                    {% if enable_ports_request == "yes" %}
+                                    <li>
+                                        <a class="dropdown-item"
+                                           data-bs-toggle="modal" data-bs-target="#requestPorts"
+                                           data-id="{{ deployment.uuid }}"
+                                           data-action="{{ url_for('deployments_bp.sendportsrequest') }}">
+                                            <i class="fas fa-ticket-alt me-2" style="width:14px;color:#9aaab8"></i>Request Ports
+                                        </a>
+                                    </li>
+                                    {% endif %}
+                                    <li>
+                                        <a class="dropdown-item {% if deployment.physicalId is not defined %}disabled{% endif %}"
+                                           href="{{ url_for('deployments_bp.depinfradetails', depid=deployment.uuid) }}">
+                                            <i class="fas fa-desktop me-2" style="width:14px;color:#9aaab8"></i>Manage VMs
+                                        </a>
+                                    </li>
+                                    {% endif %}
+ 
+                                    <!-- QCG-specific -->
+                                    {% if deployment.deployment_type == "QCG" %}
+                                    <li>
+                                        <a class="dropdown-item {% if deployment.physicalId is not defined %}disabled{% endif %}"
+                                           href="{{ url_for('deployments_bp.depqcgdetails', depid=deployment.uuid) }}">
+                                            <i class="fas fa-bars me-2" style="width:14px;color:#9aaab8"></i>Job details
+                                        </a>
+                                    </li>
+                                    {% endif %}
+ 
+                                    <li><hr class="dropdown-divider"></li>
+ 
+                                    <!-- Lock / Unlock / Delete -->
+                                    {% if deployment.locked == 0 %}
+                                    <li>
+                                        <a class="dropdown-item"
+                                           href="{{ url_for('deployments_bp.lockdeployment', depid=deployment.uuid) }}">
+                                            <i class="fas fa-lock me-2" style="width:14px;color:#9aaab8"></i>Lock
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item"
+                                           style="color:#c5362b"
+                                           data-bs-toggle="modal"
+                                           data-bs-target="#delete_confirm_{{ deployment.uuid }}">
+                                            <i class="fas fa-trash-alt me-2" style="width:14px"></i>Delete
+                                        </a>
+                                    </li>
+                                    {% else %}
+                                    <li>
+                                        <a class="dropdown-item"
+                                           href="{{ url_for('deployments_bp.unlockdeployment', depid=deployment.uuid) }}">
+                                            <i class="fas fa-lock-open me-2" style="width:14px;color:#9aaab8"></i>Unlock
+                                        </a>
+                                    </li>
+                                    {% endif %}
+ 
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+ 
+                    <!-- Modal DELETE (per deployment) -->
+                    <div class="modal fade" id="delete_confirm_{{ deployment.uuid }}"
+                         tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Confirm deletion</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p style="font-size:.875rem">
+                                        Are you sure you want to delete deployment
+                                        <code style="font-size:.8rem">{{ deployment.uuid }}</code>?
+                                        This action cannot be undone.
+                                    </p>
+                                </div>
+                                <div class="modal-footer">
+                                    <a class="btn btn-light cancelBtn" role="button" data-bs-dismiss="modal">Cancel</a>
+                                    <a class="btn btn-danger deleteBtn" role="button"
+                                       href="{{ url_for('deployments_bp.depdel', depid=deployment.uuid) }}">
+                                        Delete deployment
+                                    </a>
+                                </div>
                             </div>
                         </div>
-                        <input type="hidden" name="deployment_uuid" value="">
-                        <div class="form-group">
-                            <div>
-                                <button type="submit" class="btn btn-success">Submit</button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" data-dismiss="modal">Cancel</button>
-                </div>
+                    </div>
+ 
+                    {% endfor %}
+ 
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div><!-- /card -->
+ 
+</div><!-- /container -->
+ 
+ 
+<!-- ══════════════════════════════════════
+     Modal: REQUEST PORTS
+══════════════════════════════════════ -->
+<div class="modal fade" id="requestPorts" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Request Ports</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="requestform" action="#" method="post">
+                    <div class="mb-3">
+                        <label for="rp_username" class="form-label">User</label>
+                        <input type="text" class="form-control" name="username" id="rp_username"
+                               value="{{ session['username'] }}" disabled>
+                    </div>
+                    <div class="mb-3">
+                        <label for="rp_email" class="form-label">Email</label>
+                        <input type="email" class="form-control" name="email" id="rp_email"
+                               value="{{ session['useremail'] }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="rp_message" class="form-label">Message</label>
+                        <textarea required class="form-control" name="message" id="rp_message"
+                                  placeholder="Please provide the list of ports to be opened."
+                                  rows="4"></textarea>
+                    </div>
+                    <input type="hidden" name="deployment_uuid" value="">
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary">Submit</button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
 </div>
-
+ 
+ 
+<!-- ══════════════════════════════════════
+     Modal: EDIT DEPLOYMENT
+══════════════════════════════════════ -->
+<div class="modal fade" id="editDeployment" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit deployment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editform" action="#" method="post">
+                    <div class="mb-3">
+                        <label for="ed_description" class="form-label">Description</label>
+                        <input type="text" class="form-control" maxlength="50"
+                               name="description" id="ed_description" value="">
+                    </div>
+                    <input type="hidden" name="deployment_uuid" value="">
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-primary">Save changes</button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+ 
+ 
+<!-- ══════════════════════════════════════
+     Scripts (invariati nella logica)
+══════════════════════════════════════ -->
+ 
 {% if ar.found %}
-<script>setTimeout(function(){location.reload();},30000);</script>
+<script>setTimeout(function(){ location.reload(); }, 30000);</script>
 {% endif %}
-
+ 
 <script>
 $(document).ready(function () {
-
-    $('#tableUserDeployments').dataTable( {
+    $('#tableUserDeployments').dataTable({
         "responsive": true,
-         "columnDefs": [
-             {
-                "targets"  : 'no-sort',
-                "orderable": false,
-             },
-             {% if hidden_deployment_columns != '' %}
-             {
-                "targets": [{{hidden_deployment_columns}}],
-                "visible": false,
-             },
-             {% endif %}
-         ],
-        "order": [[ 3, "desc" ]]
+        "columnDefs": [
+            { "targets": "no-sort", "orderable": false },
+            {% if hidden_deployment_columns != '' %}
+            { "targets": [{{ hidden_deployment_columns }}], "visible": false },
+            {% endif %}
+        ],
+        "order": [[3, "desc"]]
     });
 });
 </script>
-
+ 
 <script>
 $(document).ready(function () {
     $(".deleteBtn").click(function () {
-        // add spinner to button
-        $(this).parent().find(".cancelBtn").addClass("disabled", true);
-        $(this).addClass("disabled", true);
-        $(this).html( `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Deleting...` );
+        $(this).parent().find(".cancelBtn").addClass("disabled");
+        $(this).addClass("disabled");
+        $(this).html('<span class="spinner-border spinner-border-sm me-2" role="status"></span>Deleting…');
     });
 });
 </script>
-
+ 
 <script>
 $('#requestPorts').on('show.bs.modal', function (event) {
-    var target = $(event.relatedTarget) // Button that triggered the modal
-    // Extract info from data-* attributes
-    var deployment = target.data('id')
-    var url = target.data('action')
-
-    var modal = $(this)
-    modal.find('.modal-title').text('Request ports for deployment \"' + deployment + '\"')
-    modal.find('input[name="deployment_uuid"]').val(deployment)
-    modal.find('#requestform').prop('action', url)
-})
-</script>
-
-<script>
+    var trigger    = event.relatedTarget;
+    var deployment = $(trigger).data('id');
+    var url        = $(trigger).data('action');
+    $(this).find('.modal-title').text('Request ports for "' + deployment + '"');
+    $(this).find('input[name="deployment_uuid"]').val(deployment);
+    $(this).find('#requestform').prop('action', url);
+});
+ 
 $('#editDeployment').on('show.bs.modal', function (event) {
-    var target = $(event.relatedTarget) // Button that triggered the modal
-    // Extract info from data-* attributes
-    var deployment = target.data('id')
-    var description = target.data('description')
-    var url = target.data('action')
-
-    var modal = $(this)
-    modal.find('.modal-title').text('Edit deployment \"' + deployment + '\"')
-    modal.find('input[name="deployment_uuid"]').val(deployment)
-    modal.find('input[name="description"]').val(description)
-    modal.find('#editform').prop('action', url)
-})
+    var trigger     = event.relatedTarget;
+    var deployment  = $(trigger).data('id');
+    var description = $(trigger).data('description');
+    var url         = $(trigger).data('action');
+    $(this).find('.modal-title').text('Edit deployment "' + deployment + '"');
+    $(this).find('input[name="deployment_uuid"]').val(deployment);
+    $(this).find('input[name="description"]').val(description);
+    $(this).find('#editform').prop('action', url);
+});
 </script>
+ 
 {% endblock %}
-

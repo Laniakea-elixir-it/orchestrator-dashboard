@@ -153,45 +153,89 @@
       {% endfor %}
     <!-- end radio type -->
 
-    <!-- toggle type -->
-    {% elif value.type == "toggle" %}
-      {% for constraint in value.constraints %}
-      <div>
-        <input type="checkbox" data-type="{{value.type}}" data-toggle="toggle" id="{{key}}" name="{{key}}" data-size="sm" data-offstyle="dark" value={{constraint['value']}} {{mode}}>
+<!-- toggle type -->
+{% elif value.type == "toggle" %}
+  {% for constraint in value.constraints %}
+  <div class="form-check form-switch">
 
-        <div id="encryption_alert" class="modal fade" role="dialog">
-          <div class="modal-dialog" role="document">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title">Storage encryption alert</h5>
-              </div>
-	      <div class="modal-body">{% include 'storage_encryption_alert.html' %}</div>
-              <div class="modal-footer">
-                <a id="cancelBtn" class="btn btn-primary text-white" role="button" onclick="toggle_off()">Cancel</a>
-                <a id="confirmBtn" class="btn btn-success text-white" role="button" data-dismiss="modal">Accept</a>
-              </div>
-            </div>
+    <input
+      class="form-check-input"
+      type="checkbox"
+      data-type="{{ value.type }}"
+      id="{{ key }}"
+      name="{{ key }}"
+      value="{{ constraint['value'] }}"
+      {{ mode }}
+    >
+
+    <div id="encryption_alert_{{ key }}" class="modal fade" tabindex="-1" aria-labelledby="encryption_alert_title_{{ key }}" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+
+          <div class="modal-header">
+            <h5 class="modal-title" id="encryption_alert_title_{{ key }}">
+              Storage encryption alert
+            </h5>
           </div>
+
+          <div class="modal-body">
+            {% include 'storage_encryption_alert.html' %}
+          </div>
+
+          <div class="modal-footer">
+            <button
+              id="cancelBtn_{{ key }}"
+              type="button"
+              class="btn btn-primary text-white"
+              onclick="toggle_off_{{ key }}()">
+              Cancel
+            </button>
+
+            <button
+              id="confirmBtn_{{ key }}"
+              type="button"
+              class="btn btn-success text-white"
+              data-bs-dismiss="modal">
+              Accept
+            </button>
+          </div>
+
         </div>
-
-        {% if 'storage_encryption' in key %}
-        <script>
-        $("#{{key}}").on('change', function() {
-            if ($(this).is(':checked')) {
-                $('#encryption_alert').modal({ backdrop: 'static', keyboard: false },'show');
-            }
-        });
-
-        function toggle_off() {
-          $('#{{key}}').prop('checked', false).change();
-          $('#encryption_alert').modal('hide');
-        }
-
-        </script>
-        {% endif %}
       </div>
-      {% endfor %}
-    <!-- end toggle type -->
+    </div>
+
+    {% if 'storage_encryption' in key %}
+    <script>
+      document.getElementById("{{ key }}").addEventListener("change", function () {
+        if (this.checked) {
+          const modalElement = document.getElementById("encryption_alert_{{ key }}");
+
+          const modal = new bootstrap.Modal(modalElement, {
+            backdrop: "static",
+            keyboard: false
+          });
+
+          modal.show();
+        }
+      });
+
+      function toggle_off_{{ key }}() {
+        const checkbox = document.getElementById("{{ key }}");
+        checkbox.checked = false;
+
+        const modalElement = document.getElementById("encryption_alert_{{ key }}");
+        const modal = bootstrap.Modal.getInstance(modalElement);
+
+        if (modal) {
+          modal.hide();
+        }
+      }
+    </script>
+    {% endif %}
+
+  </div>
+  {% endfor %}
+<!-- end toggle type -->
 
     <!-- ssh special input field -->
     {% elif value.type == "ssh_pub_key_type" %}
@@ -283,5 +327,6 @@ $(document).ready(function() {
     });
 });
 </script>
+
 <script src="/deployments/static/js/script.js"></script>
 

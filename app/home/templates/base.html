@@ -2,180 +2,273 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- Google fonts -->
-    <link href='https://fonts.googleapis.com/css?family=Raleway:400,100' rel='stylesheet' type='text/css'>
-    <!-- BS4-->
-    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-4.3.1/css/bootstrap.min.css') }}" />
-    <script src="{{ url_for('static', filename='bootstrap-4.3.1/js/bootstrap.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/jquery-3.4.1.min.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='ace-1.4.8/js/ace.min.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='ace-1.4.8/js/mode-json.min.js') }}"></script>
-    <script type="text/javascript" src="{{ url_for('static', filename='ace-1.4.8/js/mode-yaml.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='popper.js-1.14.7/umd/popper.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='bootstrap-4.3.1/js/bootstrap.min.js') }}"></script>
+
+    <!-- Google Fonts -->
+    <!--link rel="preconnect" href="https://fonts.googleapis.com"-->
+    <!--link rel="preconnect" href="https://fonts.gstatic.com" crossorigin-->
+    <!--link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"-->
+
+    <!-- Bootstrap 5 CDN (sostituisce bootstrap-4.3.1 locale) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+
+    <!-- Laniakea Theme -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/laniakea-theme.css') }}">
+
     <!-- DataTables -->
-    <link href="{{ url_for('static', filename='DataTables/datatables.min.css') }}" rel="stylesheet">
-    <script src="{{ url_for('static', filename='DataTables/datatables.min.js') }}"></script>
+    <!--link href="{{ url_for('static', filename='DataTables/datatables.min.css') }}" rel="stylesheet"-->
+
     <!-- Select2 -->
-    <script src="{{ url_for('static', filename='select2/4.1.0-rc.0/js/select2.min.js') }}"></script>
-    <link href="{{ url_for('static', filename='select2/4.1.0-rc.0/css/select2.min.css') }}" rel="stylesheet">
-    <!-- Toggle -->
-    <link href="{{ url_for('static', filename='bootstrap4-toggle/3.5.0/css/bootstrap4-toggle.min.css') }}" rel="stylesheet">
-    <script src="{{ url_for('static', filename='bootstrap4-toggle/3.5.0/js/bootstrap4-toggle.min.js') }}"></script>
-    <!-- include summernote css/js -->
-    <link href="{{ url_for('static', filename='summernote-0.8.20/dist/summernote-bs4.min.css') }}" rel="stylesheet">
-    <script src="{{ url_for('static', filename='summernote-0.8.20/dist/summernote-bs4.min.js') }}"></script>
-    <!-- bootstrap-show-password -->
-    <script src="{{ url_for('static', filename='bootstrap-show-password/1.2.1/bootstrap-show-password.min.js') }}"></script>
-    <!-- FontAwesome-->
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css" integrity="sha384-50oBUHEmvpQ+1lW4y57PTFmhCaXp0ML5d60M1M7uH2+nqUivzIebhndOJK28anvf" crossorigin="anonymous">
-    <!-- Add favicon -->
-    <link rel="apple-touch-icon" sizes="180x180" href="{{favicon_path}}/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{favicon_path}}/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{favicon_path}}/favicon-16x16.png">
-    <!--link rel="manifest" href="{{favicon_path}}/site.webmanifest"-->
-    <!-- Dotdotdot -->
-    <script type="text/javascript" src="{{ url_for('static', filename='dotdotdot-js/4.0.9/dotdotdot.js') }}"></script>
+    <!--link href="{{ url_for('static', filename='select2/4.1.0-rc.0/css/select2.min.css') }}" rel="stylesheet"-->
+
+    <!-- Bootstrap4-toggle (CSS mantenuto per compatibilità con template esistenti) -->
+    <!--link href="{{ url_for('static', filename='bootstrap4-toggle/3.5.0/css/bootstrap4-toggle.min.css') }}" rel="stylesheet"-->
+
+    <!-- Summernote -->
+    <!--link href="{{ url_for('static', filename='summernote-0.8.20/dist/summernote-bs4.min.css') }}" rel="stylesheet"-->
+
+    <!-- FontAwesome -->
+    <!--link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css"
+          integrity="sha384-50oBUHEmvpQ+1lW4y57PTFmhCaXp0ML5d60M1M7uH2+nqUivzIebhndOJK28anvf" crossorigin="anonymous"-->
+
+    <!-- Favicon -->
+    <!--link rel="apple-touch-icon" sizes="180x180" href="{{favicon_path}}/apple-touch-icon.png"-->
+    <!--link rel="icon" type="image/png" sizes="32x32" href="{{favicon_path}}/favicon-32x32.png"-->
+    <!--link rel="icon" type="image/png" sizes="16x16" href="{{favicon_path}}/favicon-16x16.png"-->
+
     <!-- Cookie Consent -->
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='cookieconsent2/3.1.1/cookieconsent.min.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='cookieconsent2/3.1.1/cookieconsent.min.css') }}">
     <script src="{{ url_for('static', filename='cookieconsent2/3.1.1/cookieconsent.min.js') }}"></script>
     <script>
-    let link = "{{ privacy_policy_url }}"
-    window.addEventListener("load", function(){
+    let link = "{{ privacy_policy_url }}";
+    window.addEventListener("load", function () {
         window.cookieconsent.initialise({
-          "palette": {
-            "popup": {
-              "background": "#050101"
+            "palette": {
+                "popup": { "background": "#111a24" },
+                "button": { "background": "#00865f" }
             },
-            "button": {
-              "background": "#337ab7"
-            }
-          },
-          "theme": "classic",
-          "position": "top",
-          "content": {
-            "href": link
-          }
-        })
+            "theme": "classic",
+            "position": "top",
+            "content": { "href": link }
+        });
     });
     </script>
-    <style type="text/css">
-    body {
-      margin-bottom: 70px
-      font-family: 'Raleway', sans-serif !important;
-    }
 
-    h1,h2,h3,h4,h5,h6 {
-        font-family: 'Raleway', sans-serif !important;
-    }
-    p {
-        font-family: 'Raleway', sans-serif !important;
-    }
-    div {
-        font-family: 'Raleway', sans-serif !important;
-    }
-    </style>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@4.0.0/dist/jquery.min.js"
+        integrity="sha256-F/XmJMW0GjV9plS9N/uS5WP0ACGAnPNdgXMLsQARmA4="
+        crossorigin="anonymous"></script>
+
+    <!-- jQuery (richiesto da DataTables, Select2, Summernote) -->
+    <!--script src="{{ url_for('static', filename='js/jquery-3.4.1.min.js') }}"></script-->
+
+    <!-- Ace editor -->
+    <!--script src="{{ url_for('static', filename='ace-1.4.8/js/ace.min.js') }}"></script-->
+    <!--script src="{{ url_for('static', filename='ace-1.4.8/js/mode-json.min.js') }}"></script-->
+    <!--script src="{{ url_for('static', filename='ace-1.4.8/js/mode-yaml.min.js') }}"></script-->
+
+    <!-- Select2 -->
+    <!--script src="{{ url_for('static', filename='select2/4.1.0-rc.0/js/select2.min.js') }}"></script-->
+
+    <!-- Bootstrap4-toggle -->
+    <!--script src="{{ url_for('static', filename='bootstrap4-toggle/3.5.0/js/bootstrap4-toggle.min.js') }}"></script-->
+
+    <!-- Summernote -->
+    <!--script src="{{ url_for('static', filename='summernote-0.8.20/dist/summernote-bs4.min.js') }}"></script-->
+
+    <!-- bootstrap-show-password -->
+    <!--script src="{{ url_for('static', filename='bootstrap-show-password/1.2.1/bootstrap-show-password.min.js') }}"></script-->
+
+    <!-- Dotdotdot -->
+    <!--script src="{{ url_for('static', filename='dotdotdot-js/4.0.9/dotdotdot.js') }}"></script-->
+
+    <!-- DataTables -->
+    <!--script src="{{ url_for('static', filename='DataTables/datatables.min.js') }}"></script-->
 
 </head>
 
 <body>
-
 <div class="App">
 
-    <nav class="navbar navbar-dark bg-dark navbar-expand-md sticky-top">
-        <div class="container-fluid">
-		<a class="navbar-brand" href="{{ url_for("home_bp.home") }}"><img src="{{ navbar_brand_icon }}" width="40" alt="" style="display:inline; margin-right: 10px;">{{ navbar_brand_text }}</a>
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#myNavbar">
+    <!-- ═══════════════════════════════════════
+         NAVBAR
+    ═══════════════════════════════════════ -->
+    <nav class="navbar navbar-expand-md sticky-top">
+        <div class="container-fluid px-4">
+
+            <!-- Brand -->
+            <a class="navbar-brand" href="{{ url_for('home_bp.home') }}">
+                <div class="ln-logo">
+                    <img src="{{ navbar_brand_icon }}" width="18" alt=""
+                         style="filter:brightness(0) invert(1); display:block;">
+                </div>
+                {{ navbar_brand_text }}
+            </a>
+
+            <!-- Toggler mobile -->
+            <button class="navbar-toggler" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#myNavbar"
+                    aria-controls="myNavbar" aria-expanded="false">
                 <span class="navbar-toggler-icon"></span>
             </button>
-	        <div class="collapse navbar-collapse" id="myNavbar">
-                <ul class="navbar-nav mr-auto">
+
+            <div class="collapse navbar-collapse" id="myNavbar">
+
+                <!-- ── Left nav ── -->
+                <ul class="navbar-nav me-auto">
+
                     {% if session['username'] %}
+
+                    <!-- Deployments -->
                     <li class="nav-item dropdown">
-                        <a id="depMenuItem" class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">Deployments</a>
-                        <div class="dropdown-menu">
-                            <a class="dropdown-item" href="{{ url_for("deployments_bp.showdeploymentsoverview") }}">Overview</a>
-                            <a class="dropdown-item" href="{{ url_for("deployments_bp.showdeployments") }}">List</a>
-                        </div>
+                        <a id="depMenuItem" class="nav-link dropdown-toggle {% if 'deployments' in request.path %}active{% endif %}"
+                           data-bs-toggle="dropdown" href="#">Deployments</a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('deployments_bp.showdeploymentsoverview') }}">Overview</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('deployments_bp.showdeployments') }}">List</a></li>
+                        </ul>
                     </li>
-                    {% if enable_advanced_menu == "yes" or  session['userrole'] == 'admin' %}
+
+                    <!-- Advanced -->
+                    {% if enable_advanced_menu == "yes" or session['userrole'] == 'admin' %}
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">Advanced</a>
-                        <div class="dropdown-menu">
-                            <a class="dropdown-item" href="{{ url_for("providers_bp.getslas") }}">Resource Providers</a>
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">Advanced</a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('providers_bp.getslas') }}">Resource Providers</a></li>
                             {% if session['userrole'] == 'admin' %}
-                                <a class="dropdown-item" href="{{ url_for("swift_bp.createswifttoken") }}">Create Swift Token</a>
+                            <li><a class="dropdown-item" href="{{ url_for('swift_bp.createswifttoken') }}">Create Swift Token</a></li>
                             {% endif %}
-                        </div>
+                        </ul>
                     </li>
                     {% endif %}
-		            {% if external_links|length > 0 %}
-		            <li class="nav-item dropdown">
-			            <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">External Links</a>
-                        <div class="dropdown-menu">
-			            {% for link in external_links %}
-			                <a class="dropdown-item" href="{{ link.url }}" target="blank">{{link.menu_item_name}}</a>
-			            {% endfor %}
-                        </div>
+
+                    <!-- External Links -->
+                    {% if external_links|length > 0 %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">External Links</a>
+                        <ul class="dropdown-menu">
+                            {% for link in external_links %}
+                            <li><a class="dropdown-item" href="{{ link.url }}" target="_blank">{{ link.menu_item_name }}</a></li>
+                            {% endfor %}
+                        </ul>
                     </li>
-		            {% endif %}
+                    {% endif %}
+
+                    <!-- Admin -->
                     {% if session['userrole'] == 'admin' %}
                     <li class="nav-item dropdown">
-			            <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">Admin</a>
-                        <div class="dropdown-menu">
-                            <a class="dropdown-item" href="{{ url_for("home_bp.show_settings") }}">Settings</a>
-			                <a class="dropdown-item" href="{{ url_for('users_bp.show_users') }}">Users</a>
-                            <a class="dropdown-item" href="{{ url_for('services_bp.list_as_admin') }}">Services</a>
-                        </div>
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">Admin</a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{{ url_for('home_bp.show_settings') }}">Settings</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('users_bp.show_users') }}">Users</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('services_bp.list_as_admin') }}">Services</a></li>
+                        </ul>
                     </li>
                     {% endif %}
-                    {% endif %}
+
+                    {% endif %}{# /session['username'] left #}
                 </ul>
+
+                <!-- ── Right nav ── -->
                 {% if session['username'] %}
-                <ul class="navbar-nav ml-auto">
-                    {% if session['active_usergroup'] != None and 'gets3creds' not in request.path and 'overview' not in request.path %}
+                <ul class="navbar-nav ms-auto align-items-center gap-1">
+
+                    <!-- Group switcher -->
+                    {% if session['active_usergroup'] != None
+                          and 'gets3creds' not in request.path
+                          and 'overview' not in request.path %}
                     <li id="groupMenuItem" class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">
-                            {{ session['active_usergroup'] }}<span class="caret"></span>
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#">
+                            <span class="badge bg-secondary me-1" style="font-size:.65rem;">group</span>
+                            {{ session['active_usergroup'] }}
                         </a>
-                        <div class="dropdown-menu">
+                        <ul class="dropdown-menu dropdown-menu-end">
                             {% for group in session['supported_usergroups'] %}
-                            {% if 'configure' in request.path or group==session['active_usergroup'] %}{% set prop='disabled' %}{% else %}{% set prop='' %}{% endif %}
-                            <a class="dropdown-item {{prop}}" href="{{ url_for('home_bp.set_active_usergroup', group=group) }}">{{group}}</a>
+                            {% if 'configure' in request.path or group == session['active_usergroup'] %}
+                                {% set prop = 'disabled' %}
+                            {% else %}
+                                {% set prop = '' %}
+                            {% endif %}
+                            <li>
+                                <a class="dropdown-item {{ prop }}"
+                                   href="{{ url_for('home_bp.set_active_usergroup', group=group) }}">
+                                    {% if group == session['active_usergroup'] %}
+                                        <i class="fas fa-check me-2" style="color:var(--ln-accent)"></i>
+                                    {% else %}
+                                        <i class="far fa-circle me-2" style="opacity:.3"></i>
+                                    {% endif %}
+                                    {{ group }}
+                                </a>
+                            </li>
                             {% endfor %}
-                        </div>
+                        </ul>
                     </li>
                     {% endif %}
-	                <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">
-                            <img class="rounded-circle" src="{{ session['gravatar'] }}"/> {{ session['username'] }}<span class="caret"></span>
+
+                    <!-- User menu -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center gap-2 px-2 py-1 rounded-3"
+                           style="background:#f0f2f5; border:1px solid rgba(0,0,0,.1);"
+                           data-bs-toggle="dropdown" href="#">
+                            <img class="rounded-circle" src="{{ session['gravatar'] }}"
+                                 width="22" height="22" alt="avatar"
+                                 style="border:1.5px solid rgba(0,134,95,.35);">
+                            <span style="font-size:.8125rem; color:#4e6070;">{{ session['username'] }}</span>
                         </a>
-                        <div class="dropdown-menu">
+                        <ul class="dropdown-menu dropdown-menu-end">
+
                             {% if enable_vault_integration %}
-                            <a class="dropdown-item" href="{{ url_for('vault_bp.ssh_keys') }}">SSH keys</a>
-                            <a class="dropdown-item" href="{{ url_for("vault_bp.manage_service_creds") }}">Service Credentials</a>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('vault_bp.ssh_keys') }}">
+                                    <i class="fas fa-key me-2" style="color:var(--ln-accent); width:14px;"></i>SSH keys
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('vault_bp.manage_service_creds') }}">
+                                    <i class="fas fa-lock me-2" style="color:var(--ln-accent); width:14px;"></i>Service Credentials
+                                </a>
+                            </li>
                             {% endif %}
-                            {% set s3_groups = ( s3_allowed_groups | intersect(session['supported_usergroups'])) %}
-                            {% if enable_s3creds == "yes" and (session['userrole']=='user:s3' or (s3_allowed_groups|length==0 or s3_groups|length >= 1)) %}
-                            <a class="dropdown-item" href="{{ url_for('swift_bp.gets3creds') }}">S3 credentials</a>
+
+                            {% set s3_groups = (s3_allowed_groups | intersect(session['supported_usergroups'])) %}
+                            {% if enable_s3creds == "yes" and (session['userrole'] == 'user:s3' or (s3_allowed_groups|length == 0 or s3_groups|length >= 1)) %}
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('swift_bp.gets3creds') }}">
+                                    <i class="fas fa-database me-2" style="color:var(--ln-blue); width:14px;"></i>S3 credentials
+                                </a>
+                            </li>
                             {% endif %}
-                            <div class="dropdown-divider"></div>
-                            <a class="dropdown-item" href="{{ url_for("home_bp.logout") }}">Logout</a>
-                        </div>
-	                </li>
+
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('home_bp.logout') }}">
+                                    <i class="fas fa-sign-out-alt me-2" style="color:#c5362b; width:14px;"></i>Logout
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+
                 </ul>
-	            {% endif %}
-            </div>
+                {% endif %}{# /session['username'] right #}
+
+            </div>{# /navbar-collapse #}
         </div>
     </nav>
+
+    <!-- Flash messages (invariato — usa il template esistente) -->
     {% include 'flashed_messages.html' %}
+
+    <!-- Contenuto pagina -->
     <main>
-    {% block content %}{% endblock %}
+        {% block content %}{% endblock %}
     </main>
+
+    <!-- Footer (invariato) -->
     {% include footer_template %}
+
 </div>
 
+<!-- Bootstrap 5 JS bundle (Popper incluso) — dopo jQuery -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
 </body>
-
 </html>
-
+ 

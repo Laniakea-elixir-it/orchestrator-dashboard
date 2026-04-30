@@ -1,173 +1,224 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="container mt-2" id="cardsContainer" xmlns="http://www.w3.org/1999/html">
-    <div class="input-group mb-4">
-        <div class="input-group-prepend">
-            <div class="input-group-text">
-                <i class="fa fa-search"></i>
+
+<div class="container py-4" id="cardsContainer">
+
+    <!-- Page header -->
+    <div class="mb-4">
+        <h1 class="fs-5 mb-1">On-demand Services</h1>
+        <p class="text-muted" style="font-size:.875rem">Deploy and manage cloud-based bioinformatics environments</p>
+    </div>
+
+    <!-- Search -->
+    <div class="position-relative mb-4" style="max-width:460px">
+        <svg style="position:absolute;left:14px;top:50%;transform:translateY(-50%);width:16px;height:16px;stroke:#9aaab8;pointer-events:none"
+             fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input id="cardFilter" class="form-control" type="text"
+               onkeyup="cardFilter()"
+               placeholder="Search services…"
+               style="padding-left:42px;">
+    </div>
+
+    <!-- Managed services (TOBE REMOVED) -->
+    {% if services|length > 0 %}
+    <div class="mb-4">
+        {% include 'managed_services.html' %}
+    </div>
+    <hr style="border-color:rgba(0,0,0,.08); margin-bottom:2rem;">
+    {% endif %}
+
+    <!-- Service list -->
+    {% if templates_info.items()|length == 0 %}
+
+    <div class="card text-center py-5">
+        <div class="card-body">
+            <div style="width:56px;height:56px;border-radius:16px;background:var(--ln-accent-light);
+                        border:1px solid rgba(0,134,95,.2);display:flex;align-items:center;
+                        justify-content:center;margin:0 auto 1.25rem;">
+                <svg width="26" height="26" fill="none" stroke="var(--ln-accent)" stroke-width="1.5"
+                     stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+            </div>
+            <h5 class="mb-2">No Available Services</h5>
+            <p class="text-muted mb-0" style="font-size:.875rem;max-width:360px;margin:0 auto">
+                No services are currently available for deployment. Please contact our support team for assistance.
+            </p>
+        </div>
+    </div>
+
+    {% else %}
+
+    <p class="ln-section-label">Available services</p>
+
+    <div class="ln-service-list" id="serviceList">
+
+        {% for tosca_name, tosca in templates_info.items() %}
+
+        {% set display_name = tosca['metadata']['display_name'] if tosca['metadata']['display_name'] is defined else tosca_name %}
+        {% set is_locked     = tosca['metadata']['access_locked'] %}
+        {% set in_maintenance = tosca['metadata']['tag'] is defined and tosca['metadata']['tag']|upper == 'MAINTENANCE' %}
+        {% set has_tag       = tosca['metadata']['tag'] is defined and not is_locked %}
+
+        <div class="ln-service-item" data-name="{{ display_name|lower }} {{ tosca_name|lower }}">
+
+            <!-- Icon -->
+            <div class="ln-service-icon {% if loop.index is odd %}{% else %}blue{% endif %}">
+                <img src="{{ tosca['metadata']['icon'] }}"
+                     alt="{{ display_name }}"
+                     style="width:26px;height:26px;object-fit:contain;">
+            </div>
+
+            <!-- Body -->
+            <div class="ln-service-body">
+                <p class="ln-service-title">{{ display_name }}</p>
+                <p class="ln-service-desc">{{ tosca['description'] | striptags }}</p>
+            </div>
+
+            <!-- Meta: badge + actions -->
+            <div class="ln-service-meta">
+
+                <!-- Status badge -->
+                {% if is_locked %}
+                <span class="badge bg-danger">locked</span>
+                {% elif in_maintenance %}
+                <span class="badge bg-warning">maintenance</span>
+                {% elif has_tag %}
+                <span class="badge"
+                      style="background:{{ tosca['metadata']['tag_color'] }}20;
+                             color:{{ tosca['metadata']['tag_color'] }};
+                             border:1px solid {{ tosca['metadata']['tag_color'] }}40;">
+                    {{ tosca['metadata']['tag'] }}
+                </span>
+                {% else %}
+                <span class="badge bg-success">ready</span>
+                {% endif %}
+
+                <!-- Action buttons -->
+                {% if is_locked %}
+                    {% if enable_access_request == "yes" %}
+                    <button class="btn btn-sm btn-outline-primary"
+                            data-bs-toggle="modal" data-bs-target="#requestAccess"
+                            data-id="{{ display_name }}"
+                            data-action="{{ url_for('home_bp.sendaccessrequest', service_type=display_name) }}">
+                        Request Access
+                    </button>
+                    {% endif %}
+
+                {% elif in_maintenance %}
+                    <!-- maintenance: no action -->
+
+                {% else %}
+                    {% if enable_template_groups %}
+                    <a href="{{ url_for('deployments_bp.configure', selected_group=tosca_name) }}"
+                       class="btn btn-sm btn-primary">Configure</a>
+                    {% else %}
+                    <a href="{{ url_for('deployments_bp.configure', selected_tosca=tosca_name) }}"
+                       class="btn btn-sm btn-primary">Configure</a>
+                    {% endif %}
+                {% endif %}
+
+                <!-- Read more popover -->
+                <button type="button"
+                        class="btn btn-sm btn-light read_more"
+                        tabindex="0"
+                        data-bs-toggle="popover"
+                        data-bs-trigger="focus"
+                        data-bs-html="true"
+                        title="Description"
+                        data-bs-content="{{ tosca['description'] }}">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="8" x2="12" y2="12"/>
+                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                </button>
+
             </div>
         </div>
-        <input id="cardFilter" class="form-control py-2 border" type="text" onkeyup="cardFilter()" placeholder="Search...">
-    </div>
-    {% if services|length > 0 %}
-    <div class="row">
-        <div class="col-md-12">
-        {% include 'managed_services.html' %}
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-12">
-            <hr style="height:1px;border-width:0;background-color:Gainsboro">
-        </div>
+
+        {% endfor %}
     </div>
     {% endif %}
-    <div class="row">
-        <div class="col-md-12">
-        <p class="font-weight-bold" style="font-size:20px;font-variant:small-caps">On-demand Services: </p>
-        {% if templates_info.items()|length == 0 %}    
-        <div class="jumbotron jumbotron-fluid">
-        <div class="container">
-            <h2 class="display-4">No Available Services for Deployment</h2>
-            <p class="lead">We're sorry, but no services are currently available for deployment.</p>
-            <p class="lead">This could be due to specific requirements or settings.</p>
-            <p class="lead">Please contact our support team for assistance."</p>
-        </div>
-        </div>
-        {% endif %}
-        {% for tosca_name, tosca in templates_info.items() %}
-            {% if loop.index % 3 == 1 %}
-            <!-- open card deck -->
-            <div class="card-deck">
-            {% endif %}
-                <div class="card mb-4" style="max-width: 20rem; max-height: 25rem;">
-                    <div class="card-body">
-                        <h5 class="card-title text-center">
-                            <strong> {% if tosca['metadata']['display_name'] is defined %}{{tosca['metadata']['display_name']}}{% else %}{{tosca_name}}{% endif %} </strong>
-                        </h5>
-                    </div>
-                    <div class="wrapper">
-                        <img class="card-img-bottom img-fluid" src="{{tosca['metadata']['icon']}}" alt="Card image cap">
-                        {% if tosca['metadata']['access_locked'] %}
-                        <div class="ribbon red">
-                            <span>{{ not_granted_access_tag }}</span>
-                        </div>
-                        {% else %}
-                            {% if tosca['metadata']['tag'] is defined %}
-                        <div class="ribbon {{tosca['metadata']['tag_color']}}">
-                            <span>{{tosca['metadata']['tag']}}</span>
-                        </div>
-                            {% endif %}
-                        {% endif %}
-                    </div>
-                    <div class="card-img-overlay text-center" style="z-index: 1;">
-                        <h5>
-                            <strong> {% if tosca['metadata']['display_name'] is defined %}{{tosca['metadata']['display_name']}}{% else %}{{tosca_name}}{% endif %} </strong>
-                        </h5>
-                        <div id="toscaDescription" class="card-text service-descr">
-                            <small>{{tosca['description'] | safe}}</small>
-                        </div>
-                        <div class="row justify-content-center">
-                            <div class="col-4">
-                                <a class="badge badge-pill badge-info text-left read_more" tabindex="0" data-toggle="popover" title="Full description" data-trigger="focus" data-html="true" data-content="{{tosca['description']}}">Read More</a>
-                            </div>
-                            {% if tosca['metadata']['access_locked'] %}
-                            {% if enable_access_request == "yes" %}
-                            {% set pre_tasks = tosca['metadata']['authorization_required'] %}
-                            <div class="col-4">
-                                {% if tosca['metadata']['display_name'] is defined %}
-                                {% set service_label = tosca['metadata']['display_name'] %}
-                                {% else %}
-                                {% set service_label = tosca_name %}
-                                {% endif %}
-                                <a role="button" data-id="{{ service_label }}" data-action="{{ url_for('home_bp.sendaccessrequest', service_type=service_label) }}" class="badge badge-pill badge-danger" data-toggle="modal" data-target="#requestAccess"> Request Access</a>
-                            </div>
-                            {% endif %}
-                            {% elif tosca['metadata']['tag'] is defined and tosca['metadata']['tag']|upper == 'MAINTENANCE'   %}
-                            <!-- maintenance: do not show configure button -->
-                            {% else %}
-                            <div class="col-4">
-                                {% if enable_template_groups %}
-                                <a href="{{ url_for('deployments_bp.configure', selected_group=tosca_name) }}" class="badge badge-pill badge-primary">Configure</a>
-                                {% else %}
-                                <a href="{{ url_for('deployments_bp.configure', selected_tosca=tosca_name) }}" class="badge badge-pill badge-primary">Configure</a>
-                                {% endif %}
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            {% if loop.index % 3 == 0 %}
-            <!-- close card deck -->
-            </div>
-            {% endif %}
-        {% endfor %}
-        {% if templates_info|count % 3 != 0 %}
-            <!-- close card deck -->
-            </div>
-        {% endif %}
-        </div> <!-- close col-12 -->
-    </div> <!-- close row -->
-    <!-- Modal begin -->
-    <div class="modal fade" id="requestAccess" tabindex="-1" role="dialog" aria-labelledby="requestAccess" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
+
+
+    <!-- ── Modal: Request Access ── -->
+    <div class="modal fade" id="requestAccess" tabindex="-1" aria-labelledby="requestAccessLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
-                <div class="modal-header px-lg-5">
-                    <h5 class="modal-title" id="listingModalLabel">Request Access</h5>
-                    <button class="close" type="button" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">×</span>
-                    </button>
+                <div class="modal-header">
+                    <h5 class="modal-title" id="requestAccessLabel">Request Access</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <form id="requestform" action="#" method="post">
-                        <div class="form-group">
-                            <label for="username">
-                                <strong>User</strong>
-                            </label>
-                            <div>
-                                <input type="text" class="form-control" name="username" id="username" value="{{ session['username'] }}" disabled>
-                            </div>
+                        <div class="mb-3">
+                            <label for="username" class="form-label">User</label>
+                            <input type="text" class="form-control" name="username" id="username"
+                                   value="{{ session['username'] }}" disabled>
                         </div>
-                        <div class="form-group">
-                            <label for="email">
-                                <strong>Mail</strong>
-                            </label>
-                            <div>
-                                <input type="email" class="form-control" name="email" id="email" value="{{ session['useremail'] }}" data-toggle="email">
-                            </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email</label>
+                            <input type="email" class="form-control" name="email" id="email"
+                                   value="{{ session['useremail'] }}">
                         </div>
-                        <div class="form-group">
-                            <label for="message">Message</label>
-                            <textarea required class="form-control" name="message" id="message" placeholder="Please, provide a detailed motivation for your request." rows="3"></textarea>
+                        <div class="mb-3">
+                            <label for="message" class="form-label">Message</label>
+                            <textarea required class="form-control" name="message" id="message"
+                                      placeholder="Please provide a detailed motivation for your request."
+                                      rows="4"></textarea>
                         </div>
                         <input type="hidden" name="service_type" value="">
-                        <div class="form-group">
-                            <div>
-                                <button type="submit" class="btn btn-success">Submit</button>
-                            </div>
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary">Submit request</button>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
     </div>
-    <!--  end Modal -->
-</div> <!-- close container -->
+
+</div><!-- /container -->
+
 <script src="/static/js/catalogue.js"></script>
 <link rel="stylesheet" href="/static/css/catalogue.css">
 
 <script>
-    $('#requestAccess').on('show.bs.modal', function(event) {
-        var target = $(event.relatedTarget) // Button that triggered the modal
-        // Extract info from data-* attributes
-        var service = target.data('id')
-        var url = target.data('action')
-        var modal = $(this)
-        modal.find('.modal-title').text('Request access to service \"' + service + '\"')
-        modal.find('input[name="service_type"]').val(service)
-        modal.find('#requestform').prop('action', url)
-    })
+    // Popover BS5
+    document.querySelectorAll('[data-bs-toggle="popover"]').forEach(el => {
+        new bootstrap.Popover(el);
+    });
+
+    // Modal: inject service name + action URL (BS5 events)
+    document.getElementById('requestAccess').addEventListener('show.bs.modal', function (event) {
+        const trigger  = event.relatedTarget;
+        const service  = trigger.getAttribute('data-id');
+        const url      = trigger.getAttribute('data-action');
+        this.querySelector('.modal-title').textContent = 'Request access to "' + service + '"';
+        this.querySelector('input[name="service_type"]').value = service;
+        this.querySelector('#requestform').action = url;
+    });
+
+    // Live filter sulla service list
+    function cardFilter() {
+        const q = document.getElementById('cardFilter').value.toLowerCase();
+        document.querySelectorAll('.ln-service-item').forEach(function(item) {
+            item.style.display = item.dataset.name.includes(q) ? '' : 'none';
+        });
+        // Nascondi il bordo bottom sull'ultimo visibile
+        const visible = [...document.querySelectorAll('.ln-service-item')]
+                          .filter(i => i.style.display !== 'none');
+        document.querySelectorAll('.ln-service-item').forEach(i => i.style.borderBottom = '');
+        if (visible.length) visible[visible.length - 1].style.borderBottom = 'none';
+    }
 </script>
+
 {% endblock %}

@@ -9,14 +9,14 @@
 
   {% for tab in tabs %}
     {% if loop.first %}
-      <li class="nav-item"><a class="nav-link active" data-toggle="tab" href=#{{tab}}>{{tab}}</a></li>
+      <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href=#{{tab}}>{{tab}}</a></li>
     {% else %}
-      <li class="nav-item"><a class="nav-link" data-toggle="tab" href=#{{tab}}>{{tab}}</a></li>
+      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href=#{{tab}}>{{tab}}</a></li>
     {% endif %}
   {% endfor %}
 
   {% if enable_advanced_menu == "yes" or session['userrole'] == 'admin' %}
-  <li class="nav-item"><a class="nav-link" data-toggle="tab" href=#Advanced>Advanced</a></li> <!-- always create advanced tab -->
+  <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href=#Advanced>Advanced</a></li> <!-- always create advanced tab -->
   {% endif %}
 </ul>
   <!-- end tab creation section -->
