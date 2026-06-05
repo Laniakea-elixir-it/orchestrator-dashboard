@@ -17,13 +17,9 @@
                                 This is an automatically generated notification mail<BR>
                                 YOU DO NOT NEED TO ANSWER THIS MESSAGE<BR>
                                 <p>
-                                Your Galaxy instance is up and running at URL_ADDRESS
-                                <p>
+				Your application "{{ uuid }}" is up and running at {{ url }}
+				<p>
                                 Please login using your credentials<BR>
-				username: "{{ session['username'] }} "<BR>
-                                password: "galaxy_admin_password"
-                                <p>
-                                Remember to change Galaxy password and the API key as soon as possible!
                                 <p>
                                 Kind Regards. <BR>
 				{% elif status == "CREATE_FAILED" %}
@@ -37,4 +33,3 @@
         </table>
     </body>
 </html>
-~        

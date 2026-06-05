@@ -92,11 +92,11 @@
                 <ul class="navbar-nav mr-auto">
                     {% if session['username'] %}
                     <li class="nav-item dropdown">
-                        <a id="depMenuItem" class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">Deployments</a>
-                        <div class="dropdown-menu">
-                            <a class="dropdown-item" href="{{ url_for("deployments_bp.showdeploymentsoverview") }}">Overview</a>
-                            <a class="dropdown-item" href="{{ url_for("deployments_bp.showdeployments") }}">List</a>
-                        </div>
+			<a id="depMenuItem" class="nav-link dropdown-toggle" data-toggle="dropdown" href="#">Deployments</a>
+			<div class="dropdown-menu">
+				<a class="dropdown-item" href="{{ url_for('deployments_bp.showdeployments') }}">List</a>
+				<a class="dropdown-item" href="{{ url_for('deployments_bp.showdeploymentsoverview') }}">Overview</a>
+			</div>
                     </li>
                     {% if enable_advanced_menu == "yes" or  session['userrole'] == 'admin' %}
                     <li class="nav-item dropdown">

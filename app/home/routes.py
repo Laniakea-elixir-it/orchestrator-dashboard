@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .. import app, iam_blueprint, tosca, redis_client
+from .. import app, iam_blueprint, keycloak_blueprint, tosca, redis_client
 from app.lib import utils, auth, settings, dbhelpers, openstack
 from app.models.User import User
 from datetime import datetime
@@ -165,7 +165,11 @@ def check_template_access(user_groups, active_group):
 @app.route('/')
 @home_bp.route('/')
 def home():
-    if not iam_blueprint.session.authorized:
+
+    iam_ok = iam_blueprint.session.authorized
+    kc_ok = keycloak_blueprint.session.authorized
+
+    if not iam_ok and not kc_ok:
         return redirect(url_for('home_bp.login'))
     if not session.get('userid'):
         auth.set_user_info()
@@ -225,6 +229,7 @@ def logout():
 
 @app.route('/callback', methods=['POST'])
 def callback():
+
     payload = request.get_json()
     app.logger.info("Callback payload: " + json.dumps(payload))
 
@@ -247,6 +252,8 @@ def callback():
         if dep.status != status or dep.task != task or pn != providername or status_reason != dep.status_reason:
             if 'endpoint' in payload['outputs']:
                 dep.endpoint = payload['outputs']['endpoint']
+            elif 'node_ip' in  payload['outputs']:
+                dep.endpoint = payload['outputs']['node_ip']
             dep.update_time = payload['updateTime']
             if 'physicalId' in payload:
                 dep.physicalId = payload['physicalId']
@@ -260,29 +267,30 @@ def callback():
         app.logger.info("Deployment with uuid:{} not found!".format(uuid))
 
     # send email to user
+    description = json.loads(dep.inputs)["additional_description"]
     mail_sender = app.config.get('MAIL_SENDER')
     if mail_sender and user_email != '' and rf == 1:
         if status == 'CREATE_COMPLETE':
             try:
-                utils.create_and_send_email("Deployment complete", mail_sender, [user_email], uuid, status)
+                utils.create_and_send_email("Deployment complete", mail_sender, [user_email], description, dep.endpoint, status)
             except Exception as error:
                 utils.logexception("sending email:".format(error))
 
         if status == 'CREATE_FAILED':
             try:
-                utils.create_and_send_email("Deployment failed", mail_sender, [user_email], uuid, status)
+                utils.create_and_send_email("Deployment failed", mail_sender, [user_email], uuid, dep.endpoint, status)
             except Exception as error:
                 utils.logexception("sending email:".format(error))
 
         if status == 'UPDATE_COMPLETE':
             try:
-                utils.create_and_send_email("Deployment update complete", mail_sender, [user_email], uuid, status)
+                utils.create_and_send_email("Deployment update complete", mail_sender, [user_email], uuid, dep.endpoint, status)
             except Exception as error:
                 utils.logexception("sending email:".format(error))
 
         if status == 'UPDATE_FAILED':
             try:
-                utils.create_and_send_email("Deployment update failed", mail_sender, [user_email], uuid, status)
+                utils.create_and_send_email("Deployment update failed", mail_sender, [user_email], uuid, dep.endpoint, status)
             except Exception as error:
                 utils.logexception("sending email:".format(error))
 
