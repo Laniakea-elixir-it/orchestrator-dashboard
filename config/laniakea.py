@@ -7,6 +7,7 @@ NAVBAR_BRAND_ICON = "https://raw.githubusercontent.com/Laniakea-elixir-it/resour
 FEATURE_REQUIRE_USER_SSH_PUBKEY = "yes"
 ### Template Paths
 HOME_TEMPLATE = 'laniakea/home.html'
+PORTFOLIO_TEMPLATE = 'laniakea/portfolio.html'
 MAIL_TEMPLATE = 'laniakea/email.html'
 FOOTER_TEMPLATE = 'laniakea/footer.html'
 ### Extras
@@ -21,3 +22,5 @@ EXTRA_FEATURE_LANIAKEA_UTILS_INTEGRATION = "yes"
 EXTRA_FEATURE_LANIAKEA_UTILS_PORT = "5001"
 EXTRA_FEATURE_LANIAKEA_UTILS_HTTPS = "no" #TODO
 EXTRA_FEATURE_LANIAKEA_UTILS_GALAXY_STARTUP = "/galaxyctl_api/v1.0/galaxy-startup"
+# Laniakea-nebula
+EXTRA_FEATURE_LANIAKEA_NEBULA_INTEGRATION = "yes"
