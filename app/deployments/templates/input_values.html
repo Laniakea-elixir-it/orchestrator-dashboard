@@ -1,0 +1,18 @@
+<br>
+<div class="list-group">
+  {% for k,v in inputs.items() %}
+  <div class="list-group-item d-flex align-items-center justify-content-between">
+    <strong>{{ k }}</strong>
+    <span>
+      {% if stinputs[k] is defined and stinputs[k].type is defined and (stinputs[k].type == "secret" or stinputs[k].type == "list_secrets") %}
+        <span class="fas fa-lock text-muted"></span>
+      {% elif "password" in k or "token" in k %}
+        <input type="password" id="{{k}}" disabled value="{{v}}" style="border:none;background:transparent;max-width:200px;">
+        <input type="checkbox" onclick="toggle({{k}})" class="ml-1"> <small class="text-muted">Show</small>
+      {% else %}
+        <span class="text-muted" style="max-width:500px;word-break:break-all;text-align:right;">{{v}}</span>
+      {% endif %}
+    </span>
+  </div>
+  {% endfor %}
+</div>

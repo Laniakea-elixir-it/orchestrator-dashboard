@@ -1,5 +1,6 @@
 <br>
 
+<div class="list-group">
 {% for k,v in outputs.items() %}
 
 {% set name = k %}
@@ -7,94 +8,101 @@
 {% set name = stoutputs[k]['display_name'] %}
 {% endif %}
 
+<div class="list-group-item">
+  {% if (stoutputs[k] and stoutputs[k]['type'] == 'kubeconfig') or 'kubeconfig' in k %}
+    <div class="d-flex align-items-center justify-content-between">
+      <strong>{{ name }}</strong>
+      <div>
+        <div id="{{k}}-creds" class="d-none">{{ v | replace("\\n", "\n") }}</div>
+        <button class="btn btn-sm btn-outline-primary mr-1" data-key="{{k}}" id="downloadBtn{{k}}" onclick="downloadCreds(this)">
+          <i class="fa fa-download mr-1"></i> Download
+        </button>
+        <button class="btn btn-sm btn-outline-success" data-key="{{k}}" id="copyBtn{{k}}" onclick="copyCreds(this)">
+          <i class="fa fa-copy mr-1"></i> Copy to clipboard
+        </button>
+      </div>
+    </div>
 
-{% if (stoutputs[k] and stoutputs[k]['type'] == 'kubeconfig') or 'kubeconfig' in k %}
+  {% elif (stoutputs[k] and stoutputs[k]['type'] == 'url') or "url" in k or "endpoint" in k %}
+    {% if "vpn_client_conf_url" in k %}
+    <div class="d-flex align-items-center justify-content-between">
+      <strong>OpenVPN configuration file</strong>
+      <a href='{{ url_for('vault_bp.download_ovpn', vpn_conf_filename=v) }}' download target="_blank">
+        <button class="btn btn-sm btn-outline-primary"><i class="fa fa-download mr-1"></i> Save Link As...</button>
+      </a>
+    </div>
+    {% else %}
+    <div class="d-flex align-items-center justify-content-between">
+      <strong>{{ name }}</strong>
+      <a href="{{ v }}" target="_blank" class="text-info">{{ v }}</a>
+    </div>
+    {% endif %}
 
-<p><strong>{{name}}</strong>:
-<div id="{{k}}-creds" class="d-none">{{ v | replace("\\n", "\n") }}</div>
-<button class="btn btn-primary btn-sm" data-key="{{k}}" id="downloadBtn{{k}}" onclick="downloadCreds(this)"><i class="fa fa-download"></i> Download</button>
-<button class="btn btn-success btn-sm" data-key="{{k}}" id="copyBtn{{k}}" onclick="copyCreds(this)"><i class="fa fa-copy"></i> Copy to clipboard</button>
-<p></p>
+  {% elif (stoutputs[k] and stoutputs[k]['type'] == 'ssh_user') %}
+    <div class="d-flex align-items-center justify-content-between">
+      <strong>ssh_account</strong>
+      <span class="text-muted">{{ v['os_user_name'] }}</span>
+    </div>
 
-{% elif (stoutputs[k] and stoutputs[k]['type'] == 'url') or "url" in k or "endpoint" in k %}
-{% if "vpn_client_conf_url" in k %}
-<p><strong>OpenVPN configuration file</strong>:
-<a href='{{ url_for('vault_bp.download_ovpn', vpn_conf_filename=v) }}' download target="_blank">
-<button class="btn btn-primary"><i class="fa fa-download"></i> Save Link As...</button>
-</a>
-</p>
-{% else%}
-<p><strong>{{name}}</strong>: <a href="{{v}}" target="_blank">{{v}}</a></p>
-{% endif %}
+  {% elif "node_creds" in k or "cluster_creds" in k %}
+    {% if require_ssh_pubkey == 'no' %}
+      {% if v['token'] is defined %}{% set v=[v] %}{% endif %}
+      {% for creds in v %}
+      <div class="mb-2">
+        <strong>{{ k }}{% if v|length > 1 %}[{{ loop.index }}]{% endif %}</strong>
+        <div class="d-flex align-items-center justify-content-between mt-1">
+          <span class="text-muted">ssh_login: {{ creds['user'] }}</span>
+        </div>
+        <div class="d-flex align-items-center justify-content-between mt-1">
+          <span><strong>ssh_private_key</strong></span>
+          <div>
+            <div id="{{k}}_{{loop.index}}-creds" class="d-none ssh-key">{{ creds['token'] | replace("\\n", "\n") }}</div>
+            <button class="btn btn-sm btn-outline-primary mr-1" data-key="{{k}}_{{loop.index}}" id="downloadBtn{{k}}" onclick="downloadCreds(this, 'id_rsa_')">
+              <i class="fa fa-download mr-1"></i> Download
+            </button>
+            <button class="btn btn-sm btn-outline-success" data-key="{{k}}_{{loop.index}}" id="copyBtn{{k}}" onclick="copyCreds(this)">
+              <i class="fa fa-copy mr-1"></i> Copy to clipboard
+            </button>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    {% endif %}
 
-{% elif (stoutputs[k] and stoutputs[k]['type'] == 'ssh_user') %}
-<p><strong>ssh_account</strong>: {{v['os_user_name']}} </p>
+  {% else %}
+    <div class="d-flex align-items-center justify-content-between">
+      <strong>{{ k }}</strong>
+      <span class="text-muted">{{ v }}</span>
+    </div>
+  {% endif %}
 
-{% elif "node_creds" in k or "cluster_creds" in k %}
-{%if require_ssh_pubkey=='no' %}
-
-{% if v['token'] is  defined %}
-{% set v=[v] %}
-{% endif %}
-
-
-{% for creds in v %}
-<fieldset class="border p-1">
-{% if v|length == 1 %}
-<legend style="font-size: 1.0em;width:auto;padding:0 10px;"><strong>{{k}}</strong></legend>
-{% else %}
-<legend style="font-size: 1.0em;width:auto;padding:0 10px;"><strong>{{k}}[{{loop.index}}]</strong></legend>
-{% endif %}
-<p><strong>ssh_login</strong>: {{ creds['user'] }}</p>
-<p><strong>ssh_private_key</strong>:
-<div id="{{k}}_{{loop.index}}-creds" class="d-none ssh-key">{{ creds['token'] | replace("\\n", "\n") }}</div>
-<button class="btn btn-primary btn-sm" data-key="{{k}}_{{loop.index}}" id="downloadBtn{{k}}" onclick="downloadCreds(this, 'id_rsa_')"><i class="fa fa-download"></i> Download</button>
-<button class="btn btn-success btn-sm" data-key="{{k}}_{{loop.index}}" id="copyBtn{{k}}" onclick="copyCreds(this)"><i class="fa fa-copy"></i> Copy to clipboard</button>
-<p></p>
-</fieldset>
-{% endfor %}
-<p></p>
-{% endif %}
-
-{% else %}
-<p><strong>{{k}}</strong>: {{v}}</p>
-{% endif %}
-
-<!-- Description -->
-{% if stoutputs[k] and stoutputs[k]['description'] %}
-<p style="margin-left:20px;">{{stoutputs[k]['description'] | safe}}</p>
-{% endif %}
-{% if stoutputs[k] and stoutputs[k]['warning'] %}
-<div class="alert alert-warning" role="alert">
-  <strong>Warning: </strong>{{ stoutputs[k]['warning'] | safe }}
+  {% if stoutputs[k] and stoutputs[k]['description'] %}
+  <p class="mb-0 mt-1" style="font-size:13px;color:var(--color-text-secondary);">{{ stoutputs[k]['description'] | safe }}</p>
+  {% endif %}
+  {% if stoutputs[k] and stoutputs[k]['warning'] %}
+  <div class="alert alert-warning mb-0 mt-1 py-1" role="alert">
+    <strong>Warning: </strong>{{ stoutputs[k]['warning'] | safe }}
+  </div>
+  {% endif %}
 </div>
-{% endif %}
-
 
 {% endfor %}
+</div>
 
 <script>
-
 function download(filename, text) {
   var element = document.createElement('a');
   element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
   element.setAttribute('download', filename);
-
   element.style.display = 'none';
   document.body.appendChild(element);
-
   element.click();
-
   document.body.removeChild(element);
 }
 
-
-function copyCreds(button){
-  // build text area id from data-key attribute value
+function copyCreds(button) {
   var keyid = "#" + button.getAttribute('data-key') + "-creds";
   var text = $(button).parent().find(keyid)[0].innerHTML;
-
-  // Create a new textarea element and give it id='temp_element'
   var textarea = document.createElement('textarea');
   textarea.id = button.getAttribute('data-key') + '_temp_element';
   textarea.style.height = 0;
@@ -103,20 +111,13 @@ function copyCreds(button){
   var selector = document.querySelector('#' + button.getAttribute('data-key') + '_temp_element');
   selector.select();
   document.execCommand('copy');
-  // Remove the textarea
   document.body.removeChild(textarea);
-
 }
 
-function downloadCreds(button, prefix=""){
-  // build text area id from data-key attribute value
+function downloadCreds(button, prefix="") {
   var keyid = "#" + button.getAttribute('data-key') + "-creds";
   var text = $(button).parent().find(keyid)[0].innerHTML;
-
   var filename = prefix + button.getAttribute('data-key');
-
   download(filename, text);
 }
-
 </script>
-
