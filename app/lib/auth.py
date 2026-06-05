@@ -1,4 +1,5 @@
 # Copyright (c) Istituto Nazionale di Fisica Nucleare (INFN). 2019-2020
+# Modifications Copyright (c) CNR-IBIOM and ELIXIR-IT. 2024-2026
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from app import app, iam_blueprint
+from app import app, iam_blueprint, keycloak_blueprint
 from flask import redirect, render_template, session, url_for, json
 from functools import wraps
 import ast
@@ -20,16 +21,39 @@ import requests
 from . import utils, settings
 
 
+def active_session():
+    """Returns the active OAuth session based on auth provider"""
+    if session.get('auth_provider') == 'keycloak':
+        return keycloak_blueprint.session
+    return iam_blueprint.session
+
+
+def get_access_token():
+    """Returns the access token from the active session"""
+    return active_session().token['access_token']
+
+
 def validate_configuration():
     if not settings.orchestratorConf.get('im_url'):
         app.logger.debug("Trying to (re)load config from Orchestrator: " + json.dumps(settings.orchestratorConf))
-        access_token = iam_blueprint.session.token['access_token']
+        #access_token = iam_blueprint.session.token['access_token']
+        access_token = auth.get_access_token()
         configuration = utils.getorchestratorconfiguration(settings.orchestratorUrl, access_token)
         settings.orchestratorConf = configuration
 
 
+def get_account_info():
+    if keycloak_blueprint.session.authorized:
+        session["auth_provider"] = "keycloak"
+        return keycloak_blueprint.session.get(keycloak_blueprint.session.base_url.rstrip("/") + "/protocol/openid-connect/userinfo")
+    else:
+        session["auth_provider"] = "iam"
+        return iam_blueprint.session.get("/userinfo")
+
+
 def set_user_info():
-    account_info = iam_blueprint.session.get('/userinfo')
+    account_info = get_account_info()
+    #account_info = iam_blueprint.session.get('/userinfo')
     account_info_json = account_info.json()
     user_groups = account_info_json['groups']
     user_id = account_info_json['sub']
@@ -55,7 +79,8 @@ def set_user_info():
         session['active_usergroup'] = next(iter(supported_groups), None)
 
 def update_user_info():
-    account_info = iam_blueprint.session.get('/userinfo')
+    account_info = get_account_info()
+    #account_info = iam_blueprint.session.get('/userinfo')
     account_info_json = account_info.json()
     user_groups = account_info_json['groups']
     user_id = account_info_json['sub']
@@ -75,17 +100,32 @@ def update_user_info():
 def authorized_with_valid_token(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
+        authorized = iam_blueprint.session.authorized or keycloak_blueprint.session.authorized
+        if not authorized or 'username' not in session:
+            return redirect(url_for('home_bp.home'))
 
-        if not iam_blueprint.session.authorized or 'username' not in session:
-            return redirect(url_for('iam.login'))
-
-        if iam_blueprint.session.token['expires_in'] < 60:
+        if active_session().token['expires_in'] < 60:
             app.logger.debug("Token will expire soon...Refresh token")
             update_user_info()
 
         return f(*args, **kwargs)
-
     return decorated_function
+
+
+#def authorized_with_valid_token(f):
+#    @wraps(f)
+#    def decorated_function(*args, **kwargs):
+#
+#        if not iam_blueprint.session.authorized or 'username' not in session:
+#            return redirect(url_for('iam.login'))
+#
+#        if iam_blueprint.session.token['expires_in'] < 60:
+#            app.logger.debug("Token will expire soon...Refresh token")
+#            update_user_info()
+#
+#        return f(*args, **kwargs)
+#
+#    return decorated_function
 
 
 def only_for_admin(f):
