@@ -4,6 +4,7 @@ Flask-Caching==2.1.0
 Flask_Dance==7.0.0
 Flask-Mail==0.9.1
 Flask-Redis==0.4.0
+flask-session==0.8.0
 PyYAML==6.0
 python-dateutil==2.8.2
 requests==2.31.0
