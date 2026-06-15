@@ -1,4 +1,5 @@
 # Copyright (c) Istituto Nazionale di Fisica Nucleare (INFN). 2019-2020
+# Copyright (c) CNR-IBIOM and ELIXIR-IT. 2026
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -49,7 +50,7 @@ def encrypted_volume_status(depid=None):
 
         if 'node_ip' in outputs_dict:
             api_status = api_status + outputs_dict['node_ip'] + ':' + lusk_api_port + luks_api_status_route
-            app.logger.debug(f'URL CHE USA DASHBOARD PER PARLARE CON API: {api_status}')
+            app.logger.debug(f'URL used to communicate with the API: {api_status}')
         else:
             return 'unavailable'
 
