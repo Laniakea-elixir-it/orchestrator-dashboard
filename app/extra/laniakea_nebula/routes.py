@@ -86,81 +86,14 @@ def invite(depid=None):
     keycloak.create_group(kc_token, group_name)
     temp_password = keycloak.create_user(kc_token, invited_user_email, group_name, user_group)
 
-
     # Build email
-    html_body = f"""
-    <html xmlns="https://www.elixir-italy.org">
-        <head>
-            <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-            <title></title>
-        </head>
-        <body>
-            <table border="0" cellpadding="0" cellspacing="0" height="100%" width="100%" id="bodyTable">
-                <tr>
-                    <td align="center" valign="top">
-                        <table border="0" cellpadding="20" cellspacing="0" width="600" id="emailContainer">
-                            <tr>
-                                <td align="center">
-                                    <img src="https://raw.githubusercontent.com/Laniakea-elixir-it/resources/master/logos/elixir_italy_white_background.png" width="200" height="150">
-                                </td>
-                            </tr>
-                            <tr>
-                                <td valign="top">
-                                    Dear User,<br>
-                                    This is an automatically generated notification mail.<br>
-                                    <strong>YOU DO NOT NEED TO ANSWER THIS MESSAGE</strong>
-                                    <p>
-                                    You have been invited to access a <strong>Galaxy instance</strong> protected by a VPN.
-                                    Please follow the steps below to connect.
-                                    </p>
-
-                                    <p><strong>Step 1 — Set your password</strong><br>
-                                    Click the link below to login and set your new password:<br>
-                                    <a href="{KC_REALM_URL}/account">Set your password</a><br>
-                                    Use the following temporary credentials — you will be asked to change the password immediately.<br>
-                                    Username: <strong>{invited_user_email}</strong><br>
-                                    Temporary password: <strong>{temp_password}</strong>
-                                    </p>
-
-                                    <p><strong>Step 2 — Install OpenVPN Connect</strong><br>
-                                    Download and install OpenVPN Connect on your computer:<br>
-                                    <a href="https://openvpn.net/client/">https://openvpn.net/client/</a>
-                                    </p>
-    
-                                    <p><strong>Step 3 — Import the configuration file</strong><br>
-                                    The <strong>.ovpn configuration file</strong> is attached to this email.<br>
-                                    Open OpenVPN Connect, click <em>Import Profile</em> and select the attached file.
-                                    </p>
-
-                                    <p><strong>Step 4 — Connect and access Galaxy</strong><br>
-                                    Once you have imported the profile, follow these steps:
-                                    <ol>
-                                        <li>Open <strong>OpenVPN Connect</strong> and click <strong>Connect</strong> on the imported profile.</li>
-                                        <li>A login screen will appear. Enter your email address (<strong>{invited_user_email}</strong>) as the username, and <em>any word of your choice</em> as the password — <strong>it does not matter what you type there, it will be ignored</strong>.</li>
-                                        <li>You will receive an <strong>email with a confirmation link</strong>. Open that email and click the link to authenticate.</li>
-                                        <li>⚠️ <strong>Important:</strong> do not close OpenVPN Connect while waiting for the email — keep it open until you have clicked the confirmation link.</li>
-                                        <li>Once confirmed, the VPN will connect automatically. Open your browser and go to:<br>
-                                        <a href="{galaxy_ip}">{galaxy_ip}</a></li>
-                                    </ol>
-                                    </p>
-
-                                    <p><strong>Need help?</strong><br>
-                                    Full instructions are available here:<br>
-                                    <a href="https://laniakea.readthedocs.io/en/latest/user_documentation/galaxy/vpn_deployments.html#openvpn-connect">
-                                    Laniakea VPN documentation</a>
-                                    </p>
-    
-                                    <p>Kind Regards,<br>
-                                    The Laniakea Team</p>
-                                </td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-            </table>
-        </body>
-    </html>
-    """
+    html_body = render_template(
+        'vpn_invite_email_galaxy.html',
+        invited_user_email=invited_user_email,
+        temp_password=temp_password,
+        kc_realm_url=KC_REALM_URL,
+        galaxy_ip=galaxy_ip
+    )
 
     # Send email with ovpn attachment
     utils.send_email_with_attachment(
