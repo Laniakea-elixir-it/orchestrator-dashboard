@@ -267,12 +267,13 @@ def callback():
         app.logger.info("Deployment with uuid:{} not found!".format(uuid))
 
     # send email to user
-    description = json.loads(dep.inputs)["additional_description"]
+    description = json.loads(dep.inputs).get("additional_description", "Deployment")
+    is_behind_vpn = json.loads(dep.inputs).get("is_behind_vpn", False)
     mail_sender = app.config.get('MAIL_SENDER')
     if mail_sender and user_email != '' and rf == 1:
         if status == 'CREATE_COMPLETE':
             try:
-                utils.create_and_send_email("Deployment complete", mail_sender, [user_email], description, dep.endpoint, status)
+                utils.create_and_send_email("Deployment complete", mail_sender, [user_email], description, dep.endpoint, status, is_behind_vpn)
             except Exception as error:
                 utils.logexception("sending email:".format(error))
 

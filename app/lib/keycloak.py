@@ -183,12 +183,50 @@ def deactivate_user(kc_token, user_id):
     r.raise_for_status()
 
 
-def delete_user(kc_token, user_id):
-    r = requests.delete(
-        f'{KC_ADMIN_URL}/users/{user_id}',
+def delete_user(kc_token, group_name, user_id):
+    """
+    Delete the user only if it is in the deployment group.
+    Otherwise it is just removed from the group.
+    """
+
+    # Get current group
+    group = _get_group(kc_token, group_name)
+    if not group:
+        return []
+    group_id = group['id']
+
+    # Get all groups of this user
+    r = requests.get(
+        f'{KC_ADMIN_URL}/users/{user_id}/groups',
         headers={'Authorization': f'Bearer {kc_token}'}
     )
     r.raise_for_status()
+    user_groups = r.json()
+
+    # Check if user belongs to any other vpn_ group
+    other_vpn_groups = [
+        g for g in user_groups
+        if g['name'].startswith('vpn_') and g['name'] != group_name
+    ]
+
+    if other_vpn_groups:
+        app.logger.debug(
+            f'User {user_id} belongs to other VPN groups '
+            f'{[g["name"] for g in other_vpn_groups]}, removing from group only'
+        )
+        # Remove user from group only, don't delete
+        requests.delete(
+            f'{KC_ADMIN_URL}/users/{user_id}/groups/{group_id}',
+            headers={'Authorization': f'Bearer {kc_token}'}
+        ).raise_for_status()
+        return
+    
+    # No other vpn_ group — delete user entirely
+    app.logger.debug(f'Deleting user {user["username"]} (no other VPN groups)')
+    requests.delete(
+        f'{KC_ADMIN_URL}/users/{user_id}',
+        headers={'Authorization': f'Bearer {kc_token}'}
+    ).raise_for_status()
 
 
 def delete_group_and_orphan_users(kc_token, group_name):
@@ -201,6 +239,7 @@ def delete_group_and_orphan_users(kc_token, group_name):
     if not group:
         app.logger.warning(f'Group {group_name} not found on Keycloak')
         return
+    group_id = group['id']
 
     members = get_group_users(kc_token, group_name)
     for user in members:

@@ -156,7 +156,8 @@ def delete_vpn_user(depid=None, uid=None):
     try:
         iam_token_with_aud = keycloak.exchange_iam_token()
         kc_token = keycloak.get_keycloak_token(iam_token_with_aud)
-        keycloak.delete_user(kc_token, uid)
+        group_name = f'vpn_{depid}'
+        keycloak.delete_user(kc_token, group_name, uid)
     except Exception as e:
         app.logger.error(f'Delete user error: {e}')
     return json.dumps({'status': 'ok'}), 200, {'Content-Type': 'application/json'}
