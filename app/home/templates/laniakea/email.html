@@ -16,11 +16,46 @@
                                 Dear User,<BR>
                                 This is an automatically generated notification mail<BR>
                                 YOU DO NOT NEED TO ANSWER THIS MESSAGE<BR>
+
+				{% if is_behind_vpn %}
+
+				<p>Your application "{{ uuid }}" is up and running behind VPN. Please follow the steps below to connect:</p>
+
+                                <p><strong>Step 1 — Install OpenVPN Connect</strong><br>
+                                Download and install OpenVPN Connect on your computer:<br>
+                                <a href="https://openvpn.net/client/">https://openvpn.net/client/</a>
+                                </p>
+
+				<p><strong>Step 2 — Download the OpenVPN configuration file</strong><br>
+				The <strong>.ovpn configuration file</strong> is available from the Dashboard.<br>
+				Open the deployment page, click <strong>Details</strong>, select the <strong>Output values</strong> tab, and download it from the <strong>OpenVPN configuration file</strong> entry.
+				</p>
+
+                                <p><strong>Step 3 — Connect and access</strong><br>
+                                Once you have imported the profile, follow these steps:
+                                <ol>
+                                    <li>Open <strong>OpenVPN Connect</strong> and click <strong>Connect</strong> on the imported profile.</li>
+                                    <li>A login screen will appear. Enter your <strong>email address</strong> as the username, and <em>any word of your choice</em> as the password — <strong>it does not matter what you type there, it will be ignored</strong>.</li>
+                                    <li>You will receive an <strong>email with a confirmation link</strong>. Open that email and click to <strong>IAM ReCaS-Bari login</strong> button to authenticate.</li>
+                                    <li>Once confirmed, the VPN will connect automatically.</li>
+                                </ol>
+                                    <p>⚠️ <strong>Important:</strong> do not close OpenVPN Connect while waiting for the email — keep it open until you have clicked the confirmation link.</p>
+                                    <p>💡 <strong>Tip:</strong> If the connection times out before you click the email link, go to <em>Settings → General → Connection Timeout</em> and set it to <strong>Continuously Retry</strong>.</p>
+                                </p>
+
+                                <p><strong>Need help?</strong><br>
+                                Full instructions are available here:<br>
+                                <a href="https://laniakea.readthedocs.io/en/latest/user_documentation/galaxy/vpn_deployments.html#openvpn-connect">
+                                Laniakea VPN documentation</a>
+                                </p>
+				{% else %}
                                 <p>
 				Your application "{{ uuid }}" is up and running at {{ url }}
 				<p>
                                 Please login using your credentials<BR>
                                 <p>
+				{% endif %}
+
                                 Kind Regards. <BR>
 				{% elif status == "CREATE_FAILED" %}
 				your reployment is failed
