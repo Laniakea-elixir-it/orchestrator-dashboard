@@ -1,4 +1,5 @@
 # Copyright (c) Istituto Nazionale di Fisica Nucleare (INFN). 2019-2020
+# Modifications Copyright (c) CNR-IBIOM. 2024-2026
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -127,6 +128,13 @@ def store_privkey(access_token, privkey_value):
 
     jwt_token = auth.exchange_token_with_audience(iam_base_url,
                                                   iam_client_id, iam_client_secret, access_token, vault_bound_audience)
+
+    print("============")
+    print("============")
+    print("============")
+    print("============")
+    print("============")
+    print(jwt_token)
 
     vault_client = vaultservice.connect(jwt_token, vault_role)
 

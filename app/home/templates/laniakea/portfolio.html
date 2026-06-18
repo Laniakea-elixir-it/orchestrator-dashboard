@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% block content %}
+<!--div class="container mt-4"-->
+<div class="container mt-4" style="max-width: 1200px;">
+  <div class="card shadow mb-4">
+
+    <div class="card-header py-3">
+      <div class="row align-items-center">
+        <div class="col-md-4">
+          <h4 class="font-weight-bold text-primary mb-0">On-demand services</h4>
+        </div>
+        <div class="col-md-8 d-flex align-items-center justify-content-end" style="gap:10px;">
+          <div class="input-group" style="max-width:300px;">
+            <div class="input-group-prepend">
+              <div class="input-group-text"><i class="fa fa-search"></i></div>
+            </div>
+            <input id="cardFilter" class="form-control py-2 border" type="text" onkeyup="cardFilter()" placeholder="Search services...">
+          </div>
+          <a href="{{ url_for('deployments_bp.showdeployments') }}" class="btn btn-primary" style="white-space:nowrap;">
+            <i class="fas fa-list mr-1"></i> My deployments
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-body" id="cardsContainer">
+
+      {% if services|length > 0 %}
+      <div class="row mb-3">
+        <div class="col-md-12">{% include 'managed_services.html' %}</div>
+      </div>
+      <hr style="height:1px;border-width:0;background-color:Gainsboro" class="mb-4">
+      {% endif %}
+
+      {% if templates_info.items()|length == 0 %}
+      <div class="alert alert-info">
+        No services are currently available for deployment. Please contact our support team for assistance.
+      </div>
+      {% endif %}
+
+      <div class="row" id="tilesRow">
+        {% for tosca_name, tosca in templates_info.items() %}
+        {% set display_name = tosca['metadata']['display_name'] if tosca['metadata']['display_name'] is defined else tosca_name %}
+        <div class="col-md-4 mb-4 tile-item">
+          <div class="svc-tile">
+
+            {% if tosca['metadata']['access_locked'] %}
+            <span class="svc-ribbon svc-ribbon-red">{{ not_granted_access_tag }}</span>
+            {% elif tosca['metadata']['tag'] is defined %}
+            <span class="svc-ribbon svc-ribbon-{{ tosca['metadata']['tag_color'] }}">{{ tosca['metadata']['tag'] }}</span>
+            {% endif %}
+
+            <div class="svc-img-wrap">
+              <img src="{{ tosca['metadata']['icon'] }}" alt="{{ display_name }}">
+            </div>
+
+            <div class="svc-body">
+              <p class="svc-name">{{ display_name }}</p>
+              <p class="svc-desc">{{ tosca['description'] | striptags | truncate(80) }}</p>
+            </div>
+
+            <div class="svc-overlay">
+              <p class="svc-tile-name">{{ display_name }}</p>
+
+              {% if tosca['metadata']['access_locked'] %}
+                {% if enable_access_request == "yes" %}
+                {% set service_label = tosca['metadata']['display_name'] if tosca['metadata']['display_name'] is defined else tosca_name %}
+                <a role="button"
+                   data-id="{{ service_label }}"
+                   data-action="{{ url_for('home_bp.sendaccessrequest', service_type=service_label) }}"
+                   class="svc-btn-configure"
+                   data-toggle="modal" data-target="#requestAccess">Request access</a>
+                {% endif %}
+              {% elif tosca['metadata']['tag'] is defined and tosca['metadata']['tag']|upper == 'MAINTENANCE' %}
+                <span class="svc-btn-disabled">Under maintenance</span>
+              {% else %}
+                {% if enable_template_groups %}
+                <a href="{{ url_for('deployments_bp.configure', selected_group=tosca_name) }}" class="svc-btn-configure">Configure</a>
+                {% else %}
+                <a href="{{ url_for('deployments_bp.configure', selected_tosca=tosca_name) }}" class="svc-btn-configure">Configure</a>
+                {% endif %}
+              {% endif %}
+
+              <a class="svc-read-more" tabindex="0"
+                 data-toggle="popover" title="Full description"
+                 data-trigger="focus" data-html="true"
+                 data-content="{{ tosca['description'] }}">Read more</a>
+            </div>
+
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Request Access Modal -->
+  <div class="modal fade" id="requestAccess" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+      <div class="modal-content">
+        <div class="modal-header px-lg-5">
+          <h5 class="modal-title">Request Access</h5>
+          <button class="close" type="button" data-dismiss="modal"><span>&times;</span></button>
+        </div>
+        <div class="modal-body">
+          <form id="requestform" action="#" method="post">
+            <div class="form-group">
+              <label><strong>User</strong></label>
+              <input type="text" class="form-control" name="username" value="{{ session['username'] }}" disabled>
+            </div>
+            <div class="form-group">
+              <label><strong>Mail</strong></label>
+              <input type="email" class="form-control" name="email" value="{{ session['useremail'] }}">
+            </div>
+            <div class="form-group">
+              <label>Message</label>
+              <textarea required class="form-control" name="message" placeholder="Please, provide a detailed motivation for your request." rows="3"></textarea>
+            </div>
+            <input type="hidden" name="service_type" value="">
+            <button type="submit" class="btn btn-success">Submit</button>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<style>
+.svc-tile {
+  border: 1px solid #e8e8e8;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s;
+  position: relative;
+  height: 100%;
+}
+.svc-tile:hover { border-color: #378ADD; transform: translateY(-3px); }
+.svc-tile:hover .svc-overlay { opacity: 1; }
+.svc-tile:hover .svc-btn-configure,
+.svc-tile:hover .svc-btn-disabled,
+.svc-tile:hover .svc-read-more { opacity: 1; transform: translateY(0); }
+
+.svc-img-wrap {
+  height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  padding: 16px;
+}
+.svc-img-wrap img { max-height: 90px; max-width: 100%; object-fit: contain; }
+
+.svc-body { padding: 12px 16px 16px; }
+.svc-name { font-size: 14px; font-weight: 600; margin: 0 0 4px; color: #212529; }
+.svc-desc { font-size: 12px; color: #6c757d; margin: 0; line-height: 1.5; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.svc-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(24, 95, 165, 0.92);
+  opacity: 0;
+  transition: opacity 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+}
+.svc-tile-name { font-size: 15px; font-weight: 600; color: #fff; text-align: center; margin: 0; }
+
+.svc-btn-configure {
+  display: inline-block;
+  padding: 8px 24px;
+  background: #fff;
+  color: #185fa5;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.2s, transform 0.2s, background 0.15s;
+}
+.svc-btn-configure:hover { background: #e8f0fb; color: #185fa5; text-decoration: none; }
+
+.svc-btn-disabled {
+  display: inline-block;
+  padding: 8px 24px;
+  background: rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.7);
+  border-radius: 6px;
+  font-size: 13px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.svc-read-more {
+  font-size: 12px;
+  color: rgba(255,255,255,0.75);
+  text-decoration: underline;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.2s, transform 0.2s 0.05s;
+}
+.svc-read-more:hover { color: #fff; }
+
+.svc-ribbon {
+  position: absolute;
+  top: 10px; right: 10px;
+  font-size: 10px; font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  z-index: 2;
+}
+.svc-ribbon-red { background: #dc3545; color: #fff; }
+.svc-ribbon-green { background: #28a745; color: #fff; }
+.svc-ribbon-blue { background: #0d6efd; color: #fff; }
+.svc-ribbon-yellow { background: #ffc107; color: #212529; }
+</style>
+
+<script>
+$(document).ready(function() {
+  $('[data-toggle="popover"]').popover();
+});
+
+$('#requestAccess').on('show.bs.modal', function(event) {
+  var target = $(event.relatedTarget);
+  var service = target.data('id');
+  var url = target.data('action');
+  var modal = $(this);
+  modal.find('.modal-title').text('Request access to service "' + service + '"');
+  modal.find('input[name="service_type"]').val(service);
+  modal.find('#requestform').prop('action', url);
+});
+
+function cardFilter() {
+  var filter = document.getElementById("cardFilter").value.toUpperCase();
+  var items = document.querySelectorAll("#tilesRow .tile-item");
+  for (var i = 0; i < items.length; i++) {
+    var name = items[i].querySelector(".svc-name");
+    if (name && name.innerText.toUpperCase().indexOf(filter) > -1) {
+      items[i].style.display = "";
+    } else {
+      items[i].style.display = "none";
+    }
+  }
+}
+</script>
+{% endblock %}

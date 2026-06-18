@@ -15,7 +15,9 @@
         </div>
         <div class="col-md-2 text-right">
           <!-- Button -->
-          <button type=button class="btn btn-small btn-outline-secondary" onclick="history.back()"><span class="fas fa-arrow-left mr-2"></span> Back</button>
+	  <button type="button" class="btn btn-small btn-outline-secondary" onclick="history.back()">
+            <span class="fas fa-arrow-left mr-2"></span> Back
+          </button>
         </div>
       </div> <!-- / .row -->
     </div>
@@ -28,134 +30,127 @@
       <ul class="nav nav-tabs">
         <li class="nav-item"><a class="nav-link active" data-toggle="tab" href="#DeploymentStatus">Overview</a></li>
         <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#InputValues">Input values</a></li>
+	{% if deployment.status == 'CREATE_COMPLETE' %}
         <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#OutputValues">Output values</a></li>
-        {% if deployment.vault_secret_key != '[]'  %}
+	{% if deployment.vault_secret_key != '[]' or ('storage_encryption' in inputs and inputs['storage_encryption'] == 'True') %}
 	<li class="nav-item"><a class="nav-link" data-toggle="tab" href="#SecretsValues">Secrets management</a></li>
+	{% endif %}
+	{% if inputs['is_behind_vpn'] == 'True' %}
+        <li class="nav-item"><a class="nav-link" data-toggle="tab" href="#VPNValues">VPN management</a></li>
+	{% endif %}
 	{% endif %}
       </ul>
 
 
       <div class="tab-content">
-        <div class="tab-pane fade show active" id=DeploymentStatus>
+
+        <div class="tab-pane fade show active" id="DeploymentStatus">
           <br>
-          <p><b>STATUS:</b> {{deployment.status}}</p>
-          {% if deployment.status_reason %}
-          <p style="white-space: pre-line;"><b>ERROR MSG:</b> {{deployment.status_reason}}</p>
-          {% endif %}
-          <p><b>CREATED AT:</b> {{deployment.creation_time}}</p>
-          <p><b>UPDATED AT:</b> {{deployment.update_time}}</p>
-          <p><b>DEPLOYED AT:</b> {{deployment.provider_name}}</p>
-	  {% if deployment.endpoint != '' %}
-          <p><b>ENDPOINT:</b> {{deployment.endpoint}}</p>
-	  {% endif %}
-
-          {% if deployment.status == 'CREATE_COMPLETE' %} <!-- Display these options only if the deployment is complete -->
-            {% if session['userid'] == deployment.sub %} <!-- Show encryption info only if the deployment belong to user (thus avoiding admin) -->
-              <!-- Storage integration if -->
-              {% if 'storage_encryption' in inputs and inputs['storage_encryption'] == 'True' %}
-              <hr/>
-              <button type=button id="retrieveBtn" class="btn btn-small btn-outline-success" onclick="getVaultSecret( 'encryption', 'encryption_key', href='{{ url_for('vault_bp.read_encryption_key', depid=deployment.uuid, key=inputs['vault_encryption_key']) }}' )">
-                <span class="fas fa-lock mr-2"></span>Retrieve LUKS passphrase
-              </button>
-              <!-- Modal Retrieve luks passphrase-->
-              <div class="modal fade" id="newModal">
-                <div class="modal-dialog">
-                  <div class="modal-content">
-                    <div class="modal-header">
-                      <h5 class="modal-title" id="get_luks_passwd_label_{{deployment.uuid}}">LUKS passphrase</h5>
-                      <button type="button" class="close" data-dismiss="modal">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                    <input id="luksPassphrase" class="form-control" type="password">
-                    </div>
-                    <div class="modal-footer">
-                      <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                      <!--button type="button" class="btn btn-success" onclick="copyToClipboard()" data-dismiss="modal"><span class="fas fa-copy"></span> Copy to clipboard</button-->
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {% endif %}
-
-              <!-- Enable laniakea utils if -->
-	      {% if enable_laniakea_utils == "yes" %}
-	      <!-- Encrypted volume status -->
-	      {% if 'storage_encryption' in inputs and inputs['storage_encryption'] == 'True' %}
-              <hr/>
-              <p>
-                <b>Encrypted volume status: </b>
-		<span class="badge" id="status_color"><span id="storage_status_icon" class="fas"></span></span>
-		<div class="encrypted_volume_section"></div>
-              </p>
-	      {% endif %}
-              <!-- End encrypted volume status-->
-	      <!-- Galaxy status -->
-              {% if '/galaxy' in deployment.endpoint %}
-              <hr/>
-              <p>
-                <b>Galaxy status: </b>
-                <span class="badge" id="galaxy_status_color"><span id="galaxy_status_icon" class="fas"></span></span>
-                <div class="galaxy_section"></div>
-              </p>
-              {% endif %}
-              <!-- End Galaxy status -->
-              {% endif %}
-	      <!-- End laniakea luks api volume status if -->
-
-            {% endif %} <!-- end if user session -->
-          {% endif %} <!-- End instance status if -->
-        </div>
-        <div class="tab-pane fade" id="InputValues">
-          <br>
-          {% for k,v in inputs.items() %}
-          {% if stinputs[k] is defined and stinputs[k].type is defined and (stinputs[k].type == "secret" or stinputs[k].type == "list_secrets") %}
-	  <p><strong>{{k}}</strong>: <span class="fas fa-lock"></span></p>
-	  {% elif "password" in k or "token" in k %}
-          <div>
-          <p><strong>{{k}}</strong>: <input type="password" id="{{k}}" disabled value="{{v}}">
-          <input type="checkbox" onclick="toggle({{k}})"> Show
-          </p>
+          <div class="list-group">
+        
+            <div class="list-group-item d-flex align-items-center justify-content-between">
+              <strong>Status</strong>
+              <span class="badge badge-{% if deployment.status == 'CREATE_COMPLETE' %}success{% elif deployment.status == 'CREATE_FAILED' %}danger{% else %}warning{% endif %} badge-pill">
+                {{ deployment.status }}
+              </span>
+            </div>
+        
+            {% if deployment.status_reason %}
+            <div class="list-group-item">
+              <strong>Error message</strong>
+              <pre class="mt-2 mb-0" style="font-size:13px;white-space:pre-wrap;">{{ deployment.status_reason }}</pre>
+            </div>
+            {% endif %}
+        
+            <div class="list-group-item d-flex align-items-center justify-content-between">
+              <strong>Created at</strong>
+              <span class="text-muted">{{ deployment.creation_time }}</span>
+            </div>
+        
+            <div class="list-group-item d-flex align-items-center justify-content-between">
+              <strong>Updated at</strong>
+              <span class="text-muted">{{ deployment.update_time }}</span>
+            </div>
+        
+            <div class="list-group-item d-flex align-items-center justify-content-between">
+              <strong>Deployed at</strong>
+              <span class="text-muted">{{ deployment.provider_name }}</span>
+            </div>
+        
+            {% if deployment.endpoint != '' %}
+            <div class="list-group-item d-flex align-items-center justify-content-between">
+              <strong>Endpoint</strong>
+              <a href="{{ deployment.endpoint }}" target="_blank">{{ deployment.endpoint }}</a>
+            </div>
+            {% endif %}
+        
           </div>
-          {% else %}
-          <p><strong>{{k}}</strong>: {{v}}</p>
-          {% endif %}
-          {% endfor %}
+
+	  <br>
+
+	{% if deployment.status == 'CREATE_COMPLETE' %}
+	{% if session['userid'] == deployment.sub %}
+
+        {% if enable_laniakea_utils == "yes" %}
+        {% if 'storage_encryption' in inputs and inputs['storage_encryption'] == 'True' %}
+        <div class="list-group-item d-flex align-items-center justify-content-between">
+          <strong>Encrypted volume status</strong>
+          <span>
+            <span class="badge" id="status_color"><span id="storage_status_icon" class="fas"></span></span>
+            <div class="encrypted_volume_section d-inline-block ml-2"></div>
+          </span>
         </div>
+        {% endif %}
+        {% if '/galaxy' in deployment.endpoint %}
+        <div class="list-group-item d-flex align-items-center justify-content-between">
+          <strong>Galaxy status</strong>
+          <span>
+            <span class="badge" id="galaxy_status_color"><span id="galaxy_status_icon" class="fas"></span></span>
+            <div class="galaxy_section d-inline-block ml-2"></div>
+          </span>
+        </div>
+        {% endif %}
+        {% endif %}
+
+	{% endif %}
+	{% endif %}
+
+        
+        </div>
+
+
+	<!-- Input vaules section -->
+        <div class="tab-pane fade" id="InputValues">
+	{% include "input_values.html" %}
+        </div>
+	<!-- End input values sections -->
+
+	<!-- Output vaules section -->
         <div class="tab-pane fade" id="OutputValues">
         {% include "output_values.html" %}		
         </div>
+	<!-- End output vaules section -->
+
         <!-- Add secrets section -->
-        {% if deployment.vault_secret_key != '[]'  %}
+	{% if deployment.vault_secret_key != '[]' or ('storage_encryption' in inputs and inputs['storage_encryption'] == 'True') %}
         <div class="tab-pane fade" id="SecretsValues">
-	  <br>
-	  {% set secrets_list = deployment.vault_secret_key.replace("'", "").replace("[", "").replace("]", "").split(', ') %}
-	  {% for k in secrets_list %}
-	  <p><strong>{{k}}</strong>:
-	  <button type=button id="secretBtn-{{k}}" class="btn btn-sm btn-outline-success" onclick="getVaultSecret( 'secret', '{{ k }}', href='{{ url_for('vault_bp.read_secret', depid=deployment.uuid, key=k) }}' )">
-              <span class="fas fa-lock"></span>
-          </button>
-              <!-- Modal Retrieve secret -->
-	      <div class="modal fade" id="secretModal_{{ k }}">
-                <div class="modal-dialog">
-                  <div class="modal-content">
-                    <div class="modal-header">
-			    <h5 class="modal-title" id="get_luks_passwd_label_{{deployment.uuid}}_{{ k }}">Secret: {{ k }}</h5>
-                      <button type="button" class="close" data-dismiss="modal">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                    <input id="userSecret_{{k}}" class="form-control" type="password">
-                    </div>
-                    <div class="modal-footer">
-                      <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-	  </p>
-	  {% endfor %}
+        {% include "secrets_management.html" %}
         </div>
         {% endif %}
         <!-- end secrets section -->
+
+	<!-- add VPN section -->
+        {% if deployment.status == 'CREATE_COMPLETE' %} <!-- Display these options only if the deployment is complete -->
+        {% if session['userid'] == deployment.sub %} <!-- Show encryption info only if the deployment belong to user (thus avoiding admin) -->
+        {% if inputs['is_behind_vpn'] == 'True' %}
+	<div class="tab-pane fade" id="VPNValues">
+	{% include "vpn_management.html" %}
+	</div>
+	{% endif %}
+	{% endif %}
+	{% endif %}
+        <!-- end VPN section -->
+
       </div>
     </div>
   </div>
@@ -163,6 +158,7 @@
 
 
 <script>
+$(document).ready(function() {
   $('#luksPassphrase').password();
   {% if deployment.vault_secret_key != '[]'  %}
   {% set secrets_list = deployment.vault_secret_key.replace("'", "").replace("[", "").replace("]", "").split(', ') %}
@@ -170,6 +166,7 @@
   $('#userSecret_{{k}}').password();
   {% endfor %}
   {% endif %}
+});
 </script>
 
 <script>
@@ -194,7 +191,7 @@ $(document).ready(function () {
 $(document).ready(function () {
 	$("#secretBtn-{{k}}").click(function () {
         // add spinner to button
-        $(this).html( `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>` );
+        $(this).html( `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...` );
         return true;
     });
 });
@@ -233,15 +230,16 @@ function fillModal(type,key,secret)
 
 function stopSpinner()
 {
-  $("#retrieveBtn").html( `<span class="fas fa-lock mr-2"></span>Retrieve LUKS passphrase` );
+  $("#retrieveBtn").html( `<span class="fas fa-lock mr-1"></span> Reveal` );
   $("#retrieveBtn").prop('disabled', false);
 
-  {% for k,v in inputs.items() %}
-  {% if stinputs[k] is defined and stinputs[k].type is defined and stinputs[k].type == "secret" %}
-  $("#secretBtn-{{k}}").html( `<span class="fas fa-lock"></span>` );
-  $("#secretBtn-{{k}}").prop('disabled', false); 
-  {% endif %}
+  {% if deployment.vault_secret_key != '[]' %}
+  {% set secrets_list = deployment.vault_secret_key.replace("'", "").replace("[", "").replace("]", "").split(', ') %}
+  {% for k in secrets_list %}
+  $("#secretBtn-{{k}}").html( `<span class="fas fa-lock mr-1"></span> Reveal` );
+  $("#secretBtn-{{k}}").prop('disabled', false);
   {% endfor %}
+  {% endif %}
 
 }
 </script>

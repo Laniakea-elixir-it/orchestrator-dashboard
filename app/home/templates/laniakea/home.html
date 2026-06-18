@@ -1,26 +1,381 @@
 {% extends "base.html" %}
 
 {% block content %}
-<!--style>
-.jumbotron{
- border: 2px solid black;
- padding: 25px;
-}
-</style-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap');
 
-<div class = "jumbotron jumbotron-fluid">
-  <div class="container">
-    <div class="row">
-     <div class="col-lg-7">
-     <h1 class="display-3">{{ welcome_message }}</h1>
-     <p>
-        <a class="btn btn-primary btn-lg" role="button" href="https://laniakea-elixir-it.github.io/laniakea_at_recas">Get access</a>
-        <a class="btn btn-primary btn-lg" role="button" href="{{ url_for("iam.login") }}">Login with IAM &raquo;</a>
-     </p>
-     </div>
-     <div class="col-lg-5">
-        <img src="https://raw.githubusercontent.com/Laniakea-elixir-it/branding/master/laniakea/laniakea_logo_def_mod.png" height="300"></img>
-     </div>
+  .laniakea-hero {
+    min-height: 100vh;
+    background: #f7f5f0;
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    margin: -1rem;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .hero-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,0,0,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,0,0,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+  }
+
+  .hero-blob-1 {
+    position: absolute;
+    width: 700px;
+    height: 700px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 107, 38, 0.08) 0%, transparent 70%);
+    top: -200px;
+    right: -100px;
+    pointer-events: none;
+  }
+
+  .hero-blob-2 {
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(30, 100, 220, 0.07) 0%, transparent 70%);
+    bottom: -100px;
+    left: -50px;
+    pointer-events: none;
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    padding: 4rem 5rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 107, 38, 0.08);
+    border: 1px solid rgba(255, 107, 38, 0.25);
+    border-radius: 100px;
+    padding: 6px 16px;
+    margin-bottom: 2rem;
+    animation: fadeUp 0.6s ease both;
+  }
+
+  .hero-eyebrow span {
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #e05510;
+    font-weight: 500;
+  }
+
+  .hero-eyebrow-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ff6b26;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .hero-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(3rem, 7vw, 6rem);
+    font-weight: 800;
+    line-height: 1.0;
+    color: #0f1520;
+    margin: 0 0 1rem;
+    animation: fadeUp 0.6s 0.1s ease both;
+    letter-spacing: -0.02em;
+  }
+
+  .hero-title-accent {
+    background: linear-gradient(135deg, #ff6b26, #e85510);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-subtitle {
+    font-size: 1.2rem;
+    color: #5a6478;
+    font-weight: 300;
+    margin: 0 0 3rem;
+    max-width: 500px;
+    line-height: 1.7;
+    animation: fadeUp 0.6s 0.2s ease both;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    animation: fadeUp 0.6s 0.3s ease both;
+  }
+
+  .btn-hero-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #ff6b26, #e85510);
+    color: #fff;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 20px rgba(255, 107, 38, 0.3);
+  }
+
+  .btn-hero-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(255, 107, 38, 0.45);
+    color: #fff;
+    text-decoration: none;
+  }
+
+  .btn-hero-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    background: #fff;
+    color: #1e3a6e;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    text-decoration: none;
+    border: 1px solid rgba(30, 58, 110, 0.2);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  .btn-hero-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(30,58,110,0.15);
+    color: #1e3a6e;
+    text-decoration: none;
+  }
+
+  .btn-hero-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    background: transparent;
+    color: #7a8499;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    text-decoration: none;
+    border: 1px solid rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: transform 0.2s, color 0.2s, border-color 0.2s;
+  }
+
+  .btn-hero-ghost:hover {
+    transform: translateY(-2px);
+    color: #0f1520;
+    border-color: rgba(0,0,0,0.2);
+    text-decoration: none;
+  }
+
+  .hero-visual {
+    position: absolute;
+    right: 5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 420px;
+    height: 420px;
+    animation: fadeIn 1s 0.4s ease both;
+  }
+
+  .orbit-ring {
+    position: absolute;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .orbit-1 { width: 160px; height: 160px; border: 1px solid rgba(255,107,38,0.2); animation: spin 20s linear infinite; }
+  .orbit-2 { width: 270px; height: 270px; border: 1px solid rgba(30,100,220,0.15); animation: spin 35s linear infinite reverse; }
+  .orbit-3 { width: 370px; height: 370px; border: 1px solid rgba(0,0,0,0.06); animation: spin 50s linear infinite; }
+
+  .orbit-dot {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    top: -4px;
+    left: 50%;
+    margin-left: -4px;
+  }
+
+  .orbit-dot-1 { background: #ff6b26; box-shadow: 0 0 12px rgba(255,107,38,0.6); }
+  .orbit-dot-2 { background: #1e64dc; box-shadow: 0 0 12px rgba(30,100,220,0.6); }
+  .orbit-dot-3 { background: rgba(0,0,0,0.2); }
+
+  .hero-center-logo {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: #fff;
+    border: 1px solid rgba(0,0,0,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  }
+
+  .hero-center-logo img {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+  }
+
+  .hero-stats {
+    display: flex;
+    gap: 3rem;
+    margin-top: 4rem;
+    animation: fadeUp 0.6s 0.4s ease both;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stat-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0f1520;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: #9aa0ae;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .stat-divider {
+    width: 1px;
+    background: rgba(0,0,0,0.08);
+    align-self: stretch;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes spin {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  @media (max-width: 900px) {
+    .hero-visual { display: none; }
+    .hero-content { padding: 3rem 2rem; }
+  }
+</style>
+
+<div class="laniakea-hero">
+  <div class="hero-grid"></div>
+  <div class="hero-blob-1"></div>
+  <div class="hero-blob-2"></div>
+
+  <div class="hero-content">
+    <div class="hero-eyebrow">
+      <div class="hero-eyebrow-dot"></div>
+      <span>ELIXIR-IT Compute Platform</span>
+    </div>
+
+    <h1 class="hero-title">
+      <span class="hero-title-accent">LANIAKEA</span>
+    </h1>
+
+    <p class="hero-subtitle">
+      Automatic deployment of virtual Galaxy environments for life science research.
+    </p>
+
+    <div class="hero-actions">
+      <a class="btn-hero-primary" href="{{ url_for('iam.login') }}">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
+        LOGIN
+      </a>
+      <a class="btn-hero-secondary" href="{{ url_for('keycloak.login') }}">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Login with Keycloak
+      </a>
+      <a class="btn-hero-ghost" href="https://laniakea-elixir-it.github.io/laniakea_at_recas" target="_blank">
+        Get access
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+      </a>
+    </div>
+
+    <div class="hero-stats">
+      <div class="stat-item">
+        <span class="stat-value">Galaxy</span>
+        <span class="stat-label">One-click deploy</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <span class="stat-value">VPN</span>
+        <span class="stat-label">Secure access</span>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <span class="stat-value">Vault</span>
+        <span class="stat-label">Secret management</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-visual">
+    <div class="orbit-ring orbit-1">
+      <div class="orbit-dot orbit-dot-1"></div>
+    </div>
+    <div class="orbit-ring orbit-2">
+      <div class="orbit-dot orbit-dot-2"></div>
+    </div>
+    <div class="orbit-ring orbit-3">
+      <div class="orbit-dot orbit-dot-3"></div>
+    </div>
+    <div class="hero-center-logo">
+      <img src="https://raw.githubusercontent.com/Laniakea-elixir-it/resources/master/logos/elixir_italy_white_background.png" alt="Laniakea">
+    </div>
   </div>
 </div>
+
 {% endblock %}

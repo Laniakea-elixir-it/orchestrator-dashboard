@@ -31,11 +31,23 @@
       {% endif %}
 
       <br>
-      {% for key, value in inputs.items() %}
-        {% if value.tab == tab or ( tab == tabs[0] and value.tab is not defined) %}
+      {% set ordered_inputs = inputs.items()
+        | selectattr('1.order', 'defined')
+        | sort(attribute='1.order')
+        | list
+      %}
+      
+      {% set unordered_inputs = inputs.items()
+        | rejectattr('1.order', 'defined')
+        | list
+      %}
+      
+      {% for key, value in ordered_inputs + unordered_inputs %}
+        {% if value.tab == tab or (tab == tabs[0] and value.tab is not defined) %}
           {% include 'input_types.html' %}
         {% endif %}
       {% endfor %}
+
       </div>
     {% endfor %}
   <!-- end inputs -->

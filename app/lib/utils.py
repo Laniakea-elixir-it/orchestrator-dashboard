@@ -1,4 +1,5 @@
 # Copyright (c) Istituto Nazionale di Fisica Nucleare (INFN). 2019-2020
+# Copyright (c) CNR-IBIOM and ELIXIR-IT. 2026
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -190,17 +191,26 @@ def send_ports_request_email(deployment_uuid, **kwargs):
                recipients=[app.config.get('SUPPORT_EMAIL')],
                html_body=message)
 
-def create_and_send_email(subject, sender, recipients, uuid, status):
+def create_and_send_email(subject, sender, recipients, uuid, url, status, is_behind_vpn):
     send_email(subject,
                sender=sender,
                recipients=recipients,
-               html_body=render_template(app.config.get('MAIL_TEMPLATE'), uuid=uuid, status=status))
+               html_body=render_template(app.config.get('MAIL_TEMPLATE'), uuid=uuid, url=url, status=status, is_behind_vpn=is_behind_vpn))
 
 
 def send_email(subject, sender, recipients, html_body):
     msg = Message(subject, sender=sender, recipients=recipients)
     msg.html = html_body
     msg.body = "This email is an automatic notification"  # Add plain text, needed to avoid MPART_ALT_DIFF with AntiSpam
+    Thread(target=send_async_email, args=(app, msg)).start()
+
+
+def send_email_with_attachment(subject, sender, recipients, html_body, attachment_filename=None, attachment_data=None, attachment_mimetype='application/octet-stream'):
+    msg = Message(subject, sender=sender, recipients=recipients)
+    msg.html = html_body
+    msg.body = "This email is an automatic notification"
+    if attachment_filename and attachment_data:
+        msg.attach(attachment_filename, attachment_mimetype, attachment_data)
     Thread(target=send_async_email, args=(app, msg)).start()
 
 
@@ -280,3 +290,13 @@ def download_git_repo(repo_url, target_directory, tag_or_branch=None, private=Fa
     except Exception as e:
         app.logger.error(f"An error occurred: {e}")
         return False, f"An error occurred: {e}"
+
+
+def to_bool(value):
+    """Convert common boolean-like values to bool."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in ("true", "1", "yes", "y", "on")
+
+    return bool(value)

@@ -1,4 +1,5 @@
 # Copyright (c) Istituto Nazionale di Fisica Nucleare (INFN). 2019-2020
+# Copyright (c) CNR-IBIOM and ELIXIR-IT. 2026
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,6 +34,7 @@ from app.lib import openstack as keystone
 from app.lib.orchestrator import Orchestrator
 from app.lib import s3 as s3
 from app.swift.swift import Swift
+from app.lib import keycloak
 
 deployments_bp = Blueprint('deployments_bp', __name__,
                            template_folder='templates',
@@ -383,9 +385,18 @@ def depdel(depid=None):
     access_token = iam_blueprint.session.token['access_token']
 
     dep = dbhelpers.get_deployment(depid)
-    if dep is not None and (dep.storage_encryption == 1 or dep.vault_secret_key != ""):
-        secret_path = session['userid'] + "/" + dep.vault_secret_uuid
-        delete_secret_from_vault(access_token, secret_path)
+    if dep is not None:
+        if dep.storage_encryption == 1 or dep.vault_secret_key != "":
+            secret_path = session['userid'] + "/" + dep.vault_secret_uuid
+            delete_secret_from_vault(access_token, secret_path)
+
+        inputs = json.loads(dep.inputs or "{}")
+        if utils.to_bool(inputs.get("is_behind_vpn", False)):
+            # Get keycloak token
+            iam_token_with_aud = keycloak.exchange_iam_token()
+            kc_token = keycloak.get_keycloak_token(iam_token_with_aud)
+            group_name = f'vpn_{depid}'
+            keycloak.delete_group_and_orphan_users(kc_token, group_name)
 
     try:
         orchestrator.delete(access_token, depid)

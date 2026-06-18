@@ -1,0 +1,111 @@
+<br>
+
+<div class="alert alert-info">
+  <p class="mb-1">This page allows you to share access to your Virtual Private Network (VPN) with other users.
+  By inviting a user, they will receive an email with everything they need to connect to your environment —
+  no technical knowledge required on their end.</p>
+  <p class="mb-0">Once invited, you can temporarily suspend a user's access with <strong>Deactivate</strong>,
+  restore it with <strong>Activate</strong>, or permanently remove them with <strong>Delete</strong>.</p>
+</div>
+
+<hr>
+
+<div class="d-flex justify-content-end mb-3">
+  <button class="btn btn-primary" data-toggle="modal" data-target="#inviteModal">
+    <i class="fa fa-user-plus"></i> Invite user
+  </button>
+</div>
+
+<table class="table table-bordered mt-3">
+  <thead>
+    <tr>
+      <th>Username</th><th>Email</th><th>Status</th><th>Actions</th>
+    </tr>
+  </thead>
+  <tbody id="vpn-users-tbody">
+    <tr><td colspan="4" class="text-center">Loading...</td></tr>
+  </tbody>
+</table>
+
+
+<!-- Invite Modal -->
+<div class="modal fade" id="inviteModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Invite user to VPN</h5>
+        <button type="button" class="close" data-dismiss="modal">
+          <span>&times;</span>
+        </button>
+      </div>
+      <form method="POST" action="{{ url_for('laniakea_nebula_bp.invite', depid=deployment.uuid) }}">
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" name="email" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label>Confirm email</label>
+            <input type="email" name="email_confirm" class="form-control" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Send invite</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+<script>
+function loadVpnUsers() {
+    fetch("{{ url_for('laniakea_nebula_bp.get_vpn_users', depid=deployment.uuid) }}")
+        .then(r => r.json())
+        .then(users => {
+            const tbody = document.getElementById('vpn-users-tbody');
+            if (!users.length) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">No users invited yet.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = users.map(u => `
+                <tr>
+                    <td>${u.username}</td>
+                    <td>${u.email}</td>
+                    <td>
+                        <span class="badge badge-${u.enabled ? 'success' : 'secondary'}">
+                            ${u.enabled ? 'Active' : 'Inactive'}
+                        </span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-success"
+                            onclick="vpnUserAction('{{ deployment.uuid }}', '${u.id}', 'activate')"
+                            ${u.enabled ? 'disabled' : ''}>Activate</button>
+                        <button class="btn btn-sm btn-warning"
+                            onclick="vpnUserAction('{{ deployment.uuid }}', '${u.id}', 'deactivate')"
+                            ${!u.enabled ? 'disabled' : ''}>Deactivate</button>
+                        <button class="btn btn-sm btn-danger"
+                            onclick="vpnUserAction('{{ deployment.uuid }}', '${u.id}', 'delete')">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        })
+        .catch(() => {
+            document.getElementById('vpn-users-tbody').innerHTML =
+                '<tr><td colspan="4" class="text-center text-danger">Error loading users.</td></tr>';
+        });
+}
+
+function vpnUserAction(depid, uid, action) {
+    fetch(`/laniakea_nebula/laniakea_nebula/${depid}/users/${uid}/${action}`, {method: 'POST'})
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'ok') loadVpnUsers();
+        })
+        .catch(e => console.error('Action error:', e));
+}
+
+// Load on page ready
+document.addEventListener('DOMContentLoaded', loadVpnUsers);
+</script>
