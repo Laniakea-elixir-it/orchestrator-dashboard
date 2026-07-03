@@ -1,5 +1,5 @@
 # Copyright (c) Istituto Nazionale di Fisica Nucleare (INFN). 2019-2020
-# Modifications Copyright (c) CNR-IBIOM. 2024-2026
+# Modifications Copyright (c) CNR-IBIOM and ELIXIR-IT. 2024-2026
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 # limitations under the License.
 
 from flask import Blueprint, render_template, flash, request, redirect, url_for, session, json, Response
-from app import app, iam_blueprint, vaultservice
+from app import app, vaultservice
 from app.lib import auth, sshkey as sshkeyhelpers, settings, dbhelpers
 from app.providers import sla
 from app.models.Deployment import Deployment
@@ -23,13 +23,13 @@ from app.models.User import User
 
 vault_bp = Blueprint('vault_bp', __name__, template_folder='templates', static_folder='static')
 
-iam_base_url = settings.iamUrl
-iam_client_id = settings.iamClientID
-iam_client_secret = settings.iamClientSecret
+#iam_base_url = settings.iamUrl -> auth.get_active_idp_url() inline
+#iam_client_id = settings.iamClientID -> auth.get_active_client_id(),
+#iam_client_secret = settings.iamClientSecret -> auth.get_active_client_secret()
 
-issuer = settings.iamUrl
-if not issuer.endswith('/'):
-    issuer += '/'
+#issuer = settings.iamUrl -> auth.get_active_issuer()
+#if not issuer.endswith('/'):
+#    issuer += '/'
 
 @vault_bp.route('/list_secrets/<depid>')
 @auth.authorized_with_valid_token
@@ -40,8 +40,6 @@ def list_secrets(depid=None):
 def get_secrets_list(depid, path_prefix):
     # retrieve deployment from DB
     dep = dbhelpers.get_deployment(depid)
-    app.logger.warning('--------------------')
-    app.logger.warning(dep.vault_secret_key)
 
 @vault_bp.route('/read_secret/<depid>/<key>')
 @auth.authorized_with_valid_token
@@ -65,7 +63,7 @@ def get_secret(depid, path_prefix, key):
     vault_read_token_time_duration = app.config.get("READ_TOKEN_TIME_DURATION")
     vault_read_token_renewal_duration = app.config.get("READ_TOKEN_RENEWAL_TIME_DURATION")
 
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
 
     # retrieve deployment from DB
     dep = dbhelpers.get_deployment(depid)
@@ -73,9 +71,9 @@ def get_secret(depid, path_prefix, key):
         return redirect(url_for('home_bp.home'))
     else:
 
-        jwt_token = auth.exchange_token_with_audience(iam_base_url,
-                                                      iam_client_id,
-                                                      iam_client_secret,
+        jwt_token = auth.exchange_token_with_audience(auth.get_active_idp_url(),
+                                                      auth.get_active_client_id(),
+                                                      auth.get_active_client_secret(),
                                                       access_token,
                                                       vault_bound_audience)
 
@@ -99,7 +97,7 @@ def get_secret(depid, path_prefix, key):
 @vault_bp.route('/create_ssh_key/<subject>')
 @auth.authorized_with_valid_token
 def create_ssh_key(subject):
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
     privkey, pubkey = sshkeyhelpers.generate_ssh_key()
     privkey = privkey.decode("utf-8").replace("\n", "\\n")
     store_privkey(access_token, privkey)
@@ -126,15 +124,11 @@ def store_privkey(access_token, privkey_value):
     vault_write_token_time_duration = app.config.get("WRITE_TOKEN_TIME_DURATION")
     vault_write_token_renewal_time_duration = app.config.get("WRITE_TOKEN_RENEWAL_TIME_DURATION")
 
-    jwt_token = auth.exchange_token_with_audience(iam_base_url,
-                                                  iam_client_id, iam_client_secret, access_token, vault_bound_audience)
-
-    print("============")
-    print("============")
-    print("============")
-    print("============")
-    print("============")
-    print(jwt_token)
+    jwt_token = auth.exchange_token_with_audience(auth.get_active_idp_url(),
+                                                  auth.get_active_client_id(),
+                                                  auth.get_active_client_secret(),
+                                                  access_token,
+                                                  vault_bound_audience)
 
     vault_client = vaultservice.connect(jwt_token, vault_role)
 
@@ -162,10 +156,13 @@ def read_privkey(subject):
     vault_read_token_time_duration = app.config.get("READ_TOKEN_TIME_DURATION")
     vault_read_token_renewal_duration = app.config.get("READ_TOKEN_RENEWAL_TIME_DURATION")
 
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
 
-    jwt_token = auth.exchange_token_with_audience(iam_base_url,
-                                                  iam_client_id, iam_client_secret, access_token, vault_bound_audience)
+    jwt_token = auth.exchange_token_with_audience(auth.get_active_idp_url(),
+                                                  auth.get_active_client_id(),
+                                                  auth.get_active_client_secret(),
+                                                  access_token,
+                                                  vault_bound_audience)
 
     vault_client = vaultservice.connect(jwt_token, vault_role)
 
@@ -199,11 +196,14 @@ def delete_ssh_key(subject):
 
     dbhelpers.delete_ssh_key(subject)
 
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
     privkey_key = session['userid'] + '/ssh_private_key'
 
-    jwt_token = auth.exchange_token_with_audience(iam_base_url,
-                                                  iam_client_id, iam_client_secret, access_token, vault_bound_audience)
+    jwt_token = auth.exchange_token_with_audience(auth.get_active_idp_url(),
+                                                  auth.get_active_client_id(),
+                                                  auth.get_active_client_secret(),
+                                                  access_token,
+                                                  vault_bound_audience)
 
     vault_client = vaultservice.connect(jwt_token, vault_role)
 
@@ -237,7 +237,7 @@ def manage_service_creds():
   slas={}
 
   try:
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
     slas = sla.get_slas(access_token, settings.orchestratorConf['slam_url'], settings.orchestratorConf['cmdb_url'])
     app.logger.debug("Service details: {}".format(slas))
 
@@ -256,9 +256,12 @@ def read_service_creds():
     serviceid = request.args.get('service_id', None)
     servicetype = request.args.get('service_type', None)
 
-    access_token = iam_blueprint.session.token['access_token']
-    jwt_token = auth.exchange_token_with_audience(iam_base_url,
-                                                  iam_client_id, iam_client_secret, access_token, vault_bound_audience)
+    access_token = auth.get_access_token()
+    jwt_token = auth.exchange_token_with_audience(auth.get_active_idp_url(),
+                                                  auth.get_active_client_id(),
+                                                  auth.get_active_client_secret(),
+                                                  access_token,
+                                                  vault_bound_audience)
 
     vault_client = vaultservice.connect(jwt_token, vault_role)
     path = "services_credential/" + serviceid
@@ -290,10 +293,13 @@ def write_service_creds():
 
         creds = request.form.to_dict()
 
-        access_token = iam_blueprint.session.token['access_token']
+        access_token = auth.get_access_token()
 
-        jwt_token = auth.exchange_token_with_audience(iam_base_url,
-                                                  iam_client_id, iam_client_secret, access_token, vault_bound_audience)
+        jwt_token = auth.exchange_token_with_audience(auth.get_active_idp_url(),
+                                                      auth.get_active_client_id(),
+                                                      auth.get_active_client_secret(),
+                                                      access_token,
+                                                      vault_bound_audience)
 
         vault_client = vaultservice.connect(jwt_token, vault_role)
         path = "services_credential/" + serviceid
@@ -312,10 +318,13 @@ def delete_service_creds():
 
     serviceid = request.args.get('service_id', "")
 
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
 
-    jwt_token = auth.exchange_token_with_audience(iam_base_url,
-                                                  iam_client_id, iam_client_secret, access_token, vault_bound_audience)
+    jwt_token = auth.exchange_token_with_audience(auth.get_active_idp_url(),
+                                                  auth.get_active_client_id(),
+                                                  auth.get_active_client_secret(),
+                                                  access_token,
+                                                  vault_bound_audience)
 
     vault_client = vaultservice.connect(jwt_token, vault_role)
     path = "services_credential/" + serviceid
@@ -338,10 +347,13 @@ def download_ovpn(vpn_conf_filename):
     vault_read_token_time_duration = app.config.get("READ_TOKEN_TIME_DURATION")
     vault_read_token_renewal_duration = app.config.get("READ_TOKEN_RENEWAL_TIME_DURATION")
 
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
 
-    jwt_token = auth.exchange_token_with_audience(iam_base_url,
-                                                  iam_client_id, iam_client_secret, access_token, vault_bound_audience)
+    jwt_token = auth.exchange_token_with_audience(auth.get_active_idp_url(),
+                                                  auth.get_active_client_id(),
+                                                  auth.get_active_client_secret(),
+                                                  access_token,
+                                                  vault_bound_audience)
 
     vault_client = vaultservice.connect(jwt_token, vault_role)
 
