@@ -40,7 +40,7 @@ def galaxy_startup(depid=None):
     laniakea_utils_galaxy_startup_route = app.config.get('EXTRA_FEATURE_LANIAKEA_UTILS_GALAXY_STARTUP')
     http_prefix = 'https://' if laniakea_utils_https == "yes" else 'http://'
 
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
 
     # retrieve deployment from DB
     dep = dbhelpers.get_deployment(depid)

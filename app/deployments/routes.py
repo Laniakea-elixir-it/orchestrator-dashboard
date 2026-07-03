@@ -44,9 +44,9 @@ iam_base_url = settings.iamUrl
 iam_client_id = settings.iamClientID
 iam_client_secret = settings.iamClientSecret
 
-issuer = settings.iamUrl
-if not issuer.endswith('/'):
-    issuer += '/'
+#issuer = auth.get_active_issuer()
+#if not issuer.endswith('/'):
+#    issuer += '/'
 
 orchestrator = Orchestrator(settings.orchestratorUrl)
 
@@ -62,7 +62,8 @@ def showdeploymentsingroup():
 @deployments_bp.route('/list')
 @auth.authorized_with_valid_token
 def showdeployments():
-    access_token = iam_blueprint.session.token['access_token']
+
+    access_token = auth.get_access_token()
 
     group = None
     if 'active_usergroup' in session and session['active_usergroup'] is not None:
@@ -86,14 +87,14 @@ def showdeployments():
 
 
 def update_deployments():
-    issuer = settings.iamUrl
+    issuer = auth.get_active_issuer()
     if not issuer.endswith('/'):
         issuer += '/'
 
     subject = session['userid']
 
     # retrieve deployments from orchestrator
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
     deployments_from_orchestrator = []
     try:
         deployments_from_orchestrator = orchestrator.get_deployments(access_token, created_by="{}@{}".format(subject, issuer))
@@ -145,7 +146,7 @@ def showdeploymentsoverview():
 @deployments_bp.route('/<depid>/template')
 @auth.authorized_with_valid_token
 def deptemplate(depid=None):
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
 
     try:
         template = orchestrator.get_template(access_token, depid)
@@ -235,7 +236,7 @@ def depoutput(depid=None):
             if ((stinputs[k]['printable'] if 'printable' in stinputs[k] else True) if k in stinputs else True):
                 inputs[k] = v
 
-        additional_outputs = getadditionaloutputs(dep, iam_blueprint.session.token['access_token'])
+        additional_outputs = getadditionaloutputs(dep, auth.get_access_token())
 
         outputs = {**outputs, **additional_outputs}
 
@@ -310,7 +311,7 @@ def deptemplatedb(depid):
 @deployments_bp.route('/<depid>/log')
 @auth.authorized_with_valid_token
 def deplog(depid=None):
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
     dep = dbhelpers.get_deployment(depid)
 
     log = "Not available"
@@ -325,7 +326,7 @@ def deplog(depid=None):
 @deployments_bp.route('/<depid>/infradetails')
 @auth.authorized_with_valid_token
 def depinfradetails(depid=None):
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
 
     dep = dbhelpers.get_deployment(depid)
     if dep is not None and dep.physicalId is not None:
@@ -351,7 +352,7 @@ def depinfradetails(depid=None):
 @deployments_bp.route('/<depid>/actions', methods=['POST'])
 @auth.authorized_with_valid_token
 def depaction(depid):
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
     dep = dbhelpers.get_deployment(depid)
     if dep is not None and dep.physicalId is not None:
         try:
@@ -365,7 +366,7 @@ def depaction(depid):
 @deployments_bp.route('/<depid>/qcgdetails')
 @auth.authorized_with_valid_token
 def depqcgdetails(depid=None):
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
 
     dep = dbhelpers.get_deployment(depid)
     if dep is not None and dep.physicalId is not None and dep.deployment_type == "QCG":
@@ -382,7 +383,7 @@ def depqcgdetails(depid=None):
 @deployments_bp.route('/<depid>/delete')
 @auth.authorized_with_valid_token
 def depdel(depid=None):
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
 
     dep = dbhelpers.get_deployment(depid)
     if dep is not None:
@@ -412,7 +413,7 @@ def depupdate(depid=None):
     if depid is not None:
         dep = dbhelpers.get_deployment(depid)
         if dep is not None:
-            access_token = iam_blueprint.session.token['access_token']
+            access_token = auth.get_access_token()
             template = dep.template
             tosca_info = tosca.extracttoscainfo(yaml.full_load(io.StringIO(template)), None)
             inputs = json.loads(dep.inputs.strip('\"')) if dep.inputs else {}
@@ -453,7 +454,7 @@ def depupdate(depid=None):
 @auth.authorized_with_valid_token
 def updatedep():
 
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
 
     form_data = request.form.to_dict()
 
@@ -511,7 +512,7 @@ def updatedep():
 @deployments_bp.route('/configure', methods=['GET', 'POST'])
 @auth.authorized_with_valid_token
 def configure():
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
 
     tosca_info, tosca_templates, tosca_gmetadata = tosca.get()
 
@@ -594,7 +595,7 @@ def add_sla_to_template(template, sla_id):
 def createdep():
     tosca_info, tosca_templates, tosca_gmetadata = tosca.get()
 
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
     selected_template = request.args.get('template')
     source_template = tosca_info[selected_template]
 

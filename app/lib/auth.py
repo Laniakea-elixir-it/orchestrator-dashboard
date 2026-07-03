@@ -33,10 +33,35 @@ def get_access_token():
     return active_session().token['access_token']
 
 
+def get_active_issuer():
+    if session.get('auth_provider') == 'keycloak':
+        url = settings.keycloakUrl
+    else:
+        url = settings.iamUrl
+    return url if url.endswith('/') else url + '/'
+
+
+def get_active_client_id():
+    if session.get('auth_provider') == 'keycloak':
+        return settings.keycloakClientID
+    return settings.iamClientID
+
+
+def get_active_client_secret():
+    if session.get('auth_provider') == 'keycloak':
+        return settings.keycloakClientSecret
+    return settings.iamClientSecret
+
+
+def get_active_groups():
+    if session.get('auth_provider') == 'keycloak':
+        return settings.keycloakGroups
+    return settings.iamGroups
+
+
 def validate_configuration():
     if not settings.orchestratorConf.get('im_url'):
         app.logger.debug("Trying to (re)load config from Orchestrator: " + json.dumps(settings.orchestratorConf))
-        #access_token = iam_blueprint.session.token['access_token']
         access_token = auth.get_access_token()
         configuration = utils.getorchestratorconfiguration(settings.orchestratorUrl, access_token)
         settings.orchestratorConf = configuration
@@ -59,8 +84,8 @@ def set_user_info():
     user_id = account_info_json['sub']
 
     supported_groups = []
-    if settings.iamGroups:
-        supported_groups = list(set(settings.iamGroups) & set(user_groups))
+    if get_active_groups():
+        supported_groups = list(set(get_active_groups()) & set(user_groups))
         if len(supported_groups) == 0:
             app.logger.warning("The user {} does not belong to any supported user group".format(user_id))
 
@@ -86,8 +111,8 @@ def update_user_info():
     user_id = account_info_json['sub']
 
     supported_groups = []
-    if settings.iamGroups:
-        supported_groups = list(set(settings.iamGroups) & set(user_groups))
+    if get_active_groups():
+        supported_groups = list(set(get_active_groups()) & set(user_groups))
         if len(supported_groups) == 0:
             app.logger.warning("The user {} does not belong to any supported user group".format(user_id))
 
