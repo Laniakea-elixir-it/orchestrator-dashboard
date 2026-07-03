@@ -81,7 +81,7 @@ def encrypted_volume_open(depid=None):
     luks_api_open_route = app.config.get('EXTRA_FEATURE_LUKS_API_OPEN')
     api_open = 'https://' if luks_api_https == "yes" else 'http://'
 
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
 
     # retrieve deployment from DB
     dep = dbhelpers.get_deployment(depid)

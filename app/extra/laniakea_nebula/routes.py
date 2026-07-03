@@ -60,7 +60,7 @@ def invite(depid=None):
     vault_read_token_time_duration = app.config.get("READ_TOKEN_TIME_DURATION")
     vault_read_token_renewal_duration = app.config.get("READ_TOKEN_RENEWAL_TIME_DURATION")
 
-    access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
     jwt_token = auth.exchange_token_with_audience(iam_base_url, iam_client_id, iam_client_secret, access_token, vault_bound_audience)
     vault_client = vaultservice.connect(jwt_token, vault_role)
     read_token = vault_client.get_token(vault_read_policy, vault_read_token_time_duration, vault_read_token_renewal_duration)

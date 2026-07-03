@@ -68,7 +68,7 @@ def show_deployments(subject):
     if user is not None:
         #
         # retrieve deployments from orchestrator
-        access_token = iam_blueprint.session.token['access_token']
+        access_token = auth.get_access_token()
 
         headers = {'Authorization': 'bearer %s' % access_token}
 
