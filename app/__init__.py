@@ -1,5 +1,6 @@
 # Copyright (c) Istituto Nazionale di Fisica Nucleare (INFN). 2019-2020
 # Copyright (c) CNR-IBIOM. 2024-2026
+# Copyright (c) Riccardo Caccia. 2026
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -284,6 +285,11 @@ if app.config.get("EXTRA_FEATURE_LANIAKEA_UTILS_INTEGRATION") == "yes":
 if app.config.get("EXTRA_FEATURE_LANIAKEA_NEBULA_INTEGRATION") == "yes":
     from app.extra.laniakea_nebula.routes import laniakea_nebula_bp
     app.register_blueprint(laniakea_nebula_bp, url_prefix="/laniakea_nebula")
+
+####
+from app.extra.laniakea_v399.routes import laniakea_v399_bp
+app.register_blueprint(laniakea_v399_bp, url_prefix="/laniakea_v399")
+####
 
 # logging
 loglevel = app.config.get("LOG_LEVEL") if app.config.get("LOG_LEVEL") else "INFO"

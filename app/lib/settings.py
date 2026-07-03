@@ -1,4 +1,5 @@
 # Copyright (c) Istituto Nazionale di Fisica Nucleare (INFN). 2019-2020
+# Copyright (c) Riccardo Caccia. 2026
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,6 +28,9 @@ iamGroups = app.config.get('IAM_GROUP_MEMBERSHIP')
 tempSlamUrl = app.config.get('SLAM_URL')
 
 orchestratorUrl = app.config['ORCHESTRATOR_URL']
+###
+laniakeaApiUrl = app.config.get('CORE_URL', '')
+###
 orchestratorConf = {
   'cmdb_url': app.config.get('CMDB_URL'),
   'slam_url': tempSlamUrl + "/rest/slam",

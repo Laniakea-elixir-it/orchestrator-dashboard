@@ -28,7 +28,7 @@
             </div>
             <div class="col-md-6 text-right">
               <!-- Button -->
-              <button type=button class='btn btn-outline-secondary' onclick='location.href="{{ url_for('deployments_bp.showdeployments') }}"'><span class='fas fa-sync mr-2'></span>Refresh</button>
+              <button type=button class='btn btn-outline-secondary' onclick='location.href="{{ url_for('laniakea_v399_bp.showdeployments') }}"'><span class='fas fa-sync mr-2'></span>Refresh</button>
               <button type=button class='btn btn-primary' onclick='location.href="{{ url_for('home') }}"'><span class='fas fa-plus mr-2'></span>New deployment</button>
             </div>
           </div> <!-- / .row -->
@@ -91,7 +91,7 @@
                     <a class="dropdown-item" href="{{ url_for('deployments_bp.depupdate', depid=deployment.uuid) }}"><span class="fas fa-plus-minus mr-2 grey-text"></span>Add/Remove nodes</a>
                   {% endif %}
                   {% if deployment.deployment_type == "CLOUD" %}
-                      <a class="dropdown-item {% if deployment.physicalId is not defined %}disabled{% endif %}" href="{{ url_for('deployments_bp.deplog', depid=deployment.uuid) }}">
+                      <a class="dropdown-item {% if deployment.physicalId is not defined %}disabled{% endif %}" href="{{ url_for('laniakea_v399_bp.deplog', dep_uuid=deployment.uuid) }}">
                           <span class="fas fa-file-alt mr-2 grey-text"></span>Log</a>
                       {% if enable_ports_request == "yes" %}
                       <a class="dropdown-item" data-toggle="modal" data-target="#requestPorts" data-id="{{ deployment.uuid }}" data-action="{{ url_for('deployments_bp.sendportsrequest') }}" >
@@ -131,7 +131,7 @@
               </div>
               <div class="modal-footer">
                 <a class="btn btn-primary cancelBtn" role="button" data-dismiss="modal">Cancel</a>
-                <a class="btn btn-danger deleteBtn" role="button" href="{{ url_for("deployments_bp.depdel", depid=deployment.uuid) }}">Delete deployment</a>
+                <a class="btn btn-danger deleteBtn" role="button" href="{{ url_for("laniakea_v399_bp.depdel", dep_uuid=deployment.uuid) }}">Delete deployment</a>
               </div>
             </div>
           </div>

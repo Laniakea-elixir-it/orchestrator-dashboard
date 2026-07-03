@@ -56,7 +56,7 @@
                     </span>
             </div>
             {% endif %}
-            <form id="depSubmit" action="{{ url_for('deployments_bp.createdep', template=selectedTemplate) }}" method="post" autocomplete="off" enctype="multipart/form-data">
+            <form id="depSubmit" action="{{ url_for('laniakea_v399_bp.createdep', template=selectedTemplate) }}" method="post" autocomplete="off" enctype="multipart/form-data">
                 <div class="form-group">
                     <label for="additional_description">Deployment description</label>
                     <input type="text" class="form-control" id="additional_description" name="additional_description" placeholder="description" value="" maxlength="50" required>

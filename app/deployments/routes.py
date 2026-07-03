@@ -379,7 +379,7 @@ def depqcgdetails(depid=None):
     return redirect(url_for('deployments_bp.showdeployments'))
 
 
-@deployments_bp.route('/<depid>/delete')
+@deployments_bp.route('/depdel/<depid>')
 @auth.authorized_with_valid_token
 def depdel(depid=None):
     access_token = iam_blueprint.session.token['access_token']
