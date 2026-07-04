@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from flask import Blueprint, render_template, flash, request, redirect, url_for, session
 from app import app, iam_blueprint
 from app.lib import auth, dbhelpers, settings
 import json
+import os
 import uuid as uuid_generator
 import requests
 
@@ -112,7 +112,7 @@ def deplog(dep_uuid):
     return render_template('deplog.html', log=log)
 
 
-@laniakea_v399_bp.route('/deployments/<dep_uuid>/delete', methods=['POST'])
+@laniakea_v399_bp.route('/deployments/<dep_uuid>/delete', methods=['GET', 'POST'])
 @auth.authorized_with_valid_token
 def depdel(dep_uuid):
     access_token = iam_blueprint.session.token['access_token']
@@ -141,60 +141,131 @@ def createdep():
     ssh_pub_key       = dbhelpers.get_ssh_pub_key(user_sub) or ''
     deployment_uuid   = str(uuid_generator.uuid1())
 
-    # Build deployment_info — cloud config comes from form fields
-    # The API and agent handle all provider-specific logic
     from datetime import datetime, timezone
     timestamp = datetime.now(timezone.utc).isoformat()
+
+    # Target cloud selected by the user in the form
+    target_cloud = form.get('extra_opts.selectedCloud', 'openstack_recas').lower()
+
+    # Load per-cloud config template (auth_url, project_id, endpoints, maps)
+    clouds_dir = app.config.get('LANIAKEA_CLOUDS_DIR', '/etc/orchestrator-dashboard/settings/laniakea-clouds')
+    cloud_cfg_path = os.path.join(clouds_dir, f"{target_cloud}.json")
+    try:
+        with open(cloud_cfg_path) as cf:
+            cloud = json.load(cf)
+    except Exception as exc:
+        flash(f"Cloud config not found for '{target_cloud}': {exc}", 'danger')
+        return redirect(url_for('laniakea_v399_bp.showdeployments'))
+
+    # Map form fields -> flavor / image using the maps in the cloud config.
+    # Keys are normalized (trimmed, collapsed whitespace, lowercased) on both
+    # sides so cosmetic differences between form values and JSON keys don't break the match.
+    def _norm(s: str) -> str:
+        return " ".join(str(s).split()).lower()
+
+    flavor_map = { _norm(k): v for k, v in cloud.get('flavor_map', {}).items() }
+    image_map  = { _norm(k): v for k, v in cloud.get('image_map', {}).items() }
+
+    flavor_key = _norm(f"{form.get('num_cpus', '')}|{form.get('mem_size', '')}")
+    image_key  = _norm(f"{form.get('os_distribution', '')}|{form.get('os_version', '')}")
+    flavor     = flavor_map.get(flavor_key, '')
+    image      = image_map.get(image_key, '')
+
+    if not flavor or not image:
+        flash(f"Cannot map flavor ({flavor_key!r}, available: {list(flavor_map.keys())}) "
+              f"or image ({image_key!r}, available: {list(image_map.keys())}) "
+              f"for {target_cloud}. Check {cloud_cfg_path}.", 'danger')
+        return redirect(url_for('laniakea_v399_bp.showdeployments'))
+
+    network_type = 'private' if 'priv' in selected_template else 'public'
+
+    is_aws            = cloud.get('provider', '') == 'aws' or target_cloud == 'aws'
+    selected_provider = "AWS" if is_aws else "Openstack"
+
+    openstack_block = {
+        "os_auth_url": "", "os_project_id": "", "region_name": "",
+        "private_net_name": "", "public_net_name": "",
+        "endpoint_overrides_network": "", "endpoint_overrides_volumev3": "",
+        "endpoint_overrides_image": "", "private_network_proxy_host": "",
+        "ssh_key": "",
+        "template": {"url": "", "path": "", "branch": ""},
+        "inputs": {
+            "flavor": "", "image": "", "os_distribution": "", "os_version": "",
+            "storage_size": "", "network_type": "",
+            "open_ports": [{"port": 22, "protocol": "tcp", "cidr": "0.0.0.0/0"}],
+        },
+    }
+    aws_block = {
+        "region": "", "bastion_ip": "", "ssh_key": "",
+        "aws_access_key": "", "aws_secret_key": "",
+        "template": {"url": "", "path": "", "branch": ""},
+        "inputs": {
+            "instance_type": "", "image": "", "storage_size": "",
+            "os_distribution": "", "os_version": "", "network_type": "",
+            "open_ports": [{"port": "22", "protocol": "", "cidr": ""}],
+        },
+    }
+
+    if is_aws:
+        aws_block = {
+            "region":         cloud.get('region', ''),
+            "bastion_ip":     cloud.get('bastion_ip', ''),
+            "ssh_key":        ssh_pub_key,
+            "aws_access_key": "",
+            "aws_secret_key": "",
+            "template":       cloud.get('template', {"url": "", "path": "aws", "branch": "main"}),
+            "inputs": {
+                "instance_type":   flavor,
+                "image":           image,
+                "storage_size":    form.get('storage_size', ''),
+                "os_distribution": form.get('os_distribution', ''),
+                "os_version":      form.get('os_version', ''),
+                "network_type":    network_type,
+                "open_ports":      json.loads(form.get('open_ports', '[]') or '[]'),
+            },
+        }
+    else:
+        openstack_block = {
+            "os_auth_url":                 cloud.get('os_auth_url', ''),
+            "os_project_id":               cloud.get('os_project_id', ''),
+            "region_name":                 cloud.get('region_name', 'RegionOne'),
+            "private_net_name":            cloud.get('private_net_name', ''),
+            "public_net_name":             cloud.get('public_net_name', ''),
+            "endpoint_overrides_network":  cloud.get('endpoint_overrides_network', ''),
+            "endpoint_overrides_volumev3": cloud.get('endpoint_overrides_volumev3', ''),
+            "endpoint_overrides_image":    cloud.get('endpoint_overrides_image', ''),
+            "private_network_proxy_host":  cloud.get('private_network_proxy_host', ''),
+            "ssh_key":                     ssh_pub_key,
+            "template":                    cloud.get('template', {"url": "", "path": target_cloud, "branch": "main"}),
+            "inputs": {
+                "flavor":          flavor,
+                "image":           image,
+                "os_distribution": form.get('os_distribution', ''),
+                "os_version":      form.get('os_version', ''),
+                "storage_size":    form.get('storage_size', ''),
+                "network_type":    network_type,
+                "open_ports":      json.loads(form.get('open_ports', '[]') or '[]'),
+            },
+        }
 
     deployment_info = {
         "deployment_uuid":   deployment_uuid,
         "timestamp":         timestamp,
         "description":       form.get('additional_description', ''),
-        "selected_provider": "Openstack",
+        "selected_provider": selected_provider,
         "auth": {
             "aai_token": access_token,
             "sub":       user_sub,
             "group":     session.get('active_usergroup', 'default'),
         },
         "orchestrator": {
-            "target_provider":      form.get('extra_opts.selectedCloud', 'openstack_recas'),
+            "target_provider":      target_cloud,
             "desired_orchestrator": "terraform",
             "endpoint":             "",
         },
         "cloud_providers": {
-            "openstack": {
-                "os_auth_url":                 form.get('os_auth_url', ''),
-                "os_project_id":               form.get('os_project_id', ''),
-                "region_name":                 form.get('region_name', 'RegionOne'),
-                "endpoint_overrides_network":  form.get('endpoint_overrides_network', ''),
-                "endpoint_overrides_volumev3": form.get('endpoint_overrides_volumev3', ''),
-                "endpoint_overrides_image":    form.get('endpoint_overrides_image', ''),
-                "private_network_proxy_host":  form.get('private_network_proxy_host', ''),
-                "ssh_key":                     ssh_pub_key,
-                "template": {
-                    "url":    "",
-                    "path":   form.get('extra_opts.selectedCloud', 'openstack_recas'),
-                    "branch": "main",
-                },
-                "inputs": {
-                    "flavor":          form.get('flavor', ''),
-                    "image":           form.get('image', ''),
-                    "os_distribution": form.get('os_distribution', ''),
-                    "os_version":      form.get('os_version', ''),
-                    "network_type":    'private' if 'priv' in selected_template else 'public',
-                    "open_ports":      json.loads(form.get('open_ports', '[]') or '[]'),
-                },
-            },
-            "aws": {
-                "region": "", "bastion_ip": "", "ssh_key": "",
-                "aws_access_key": "", "aws_secret_key": "",
-                "template": {"url": "", "path": "", "branch": ""},
-                "inputs": {
-                    "instance_type": "", "image": "", "storage_size": "",
-                    "os_distribution": "", "os_version": "", "network_type": "",
-                    "open_ports": [{"port": "22", "protocol": "", "cidr": ""}],
-                },
-            },
+            "openstack": openstack_block,
+            "aws":       aws_block,
         },
         "user_sub":     user_sub,
         "user_email":   user_email,
@@ -216,3 +287,4 @@ def createdep():
         flash(f"Error submitting deployment: {exc}", 'danger')
 
     return redirect(url_for('laniakea_v399_bp.showdeployments'))
+
