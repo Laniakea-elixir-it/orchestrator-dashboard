@@ -1,4 +1,5 @@
-# Copyright (c) Istituto Nazionale di Fisica Nucleare (INFN). 2019-2020
+# Copyright (c) Istituto Nazionale di Fisica Nucleare (INFN). 2019-2020i
+# Copyright (c) Riccardo Caccia. 2026
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -171,9 +172,16 @@ def home():
 
     if not iam_ok and not kc_ok:
         return redirect(url_for('home_bp.login'))
+    ###
     if not session.get('userid'):
-        auth.set_user_info()
-    return redirect(url_for('home_bp.portfolio'))
+        try:
+            auth.set_user_info()
+        except Exception as e:
+            app.logger.warning(f"set_user_info failed: {e}")   
+            session.clear()
+            return redirect(url_for('home_bp.login'))
+    return redirect(url_for('home_bp.portfolio'))   
+
 
 @app.route('/portfolio')
 @home_bp.route('/portfolio')
@@ -220,10 +228,16 @@ def set_active_usergroup():
     return redirect(request.referrer)
 
 
+######
 @home_bp.route('/logout')
 def logout():
+    provider = session.get('auth_provider')
     session.clear()
-    iam_blueprint.session.get("/logout")
+    try:
+        if provider == 'iam':
+            iam_blueprint.session.get("/logout")
+    except Exception:
+        app.logger.warning("Logout call to provider failed")
     return redirect(url_for('home_bp.login'))
 
 

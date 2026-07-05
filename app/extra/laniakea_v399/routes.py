@@ -18,6 +18,7 @@ import json
 import os
 import uuid as uuid_generator
 import requests
+import re
 
 laniakea_v399_bp = Blueprint('laniakea_v399_bp', __name__, template_folder='templates', static_folder='static')
 
@@ -55,21 +56,50 @@ def _normalize(d):
         except Exception:
             outputs = {}
     return {
-        'uuid':            d.get('deployment_uuid', ''),
+        # DB column names first
+        'uuid':            d.get('uuid') or d.get('deployment_uuid', ''),
         'status':          d.get('status', 'UNKNOWN'),
         'status_reason':   d.get('status_reason', ''),
         'description':     d.get('description', ''),
-        'provider_name':   d.get('selected_provider', ''),
-        'creation_time':   d.get('created_at', ''),
-        'update_time':     d.get('updated_at', ''),
+        'provider_name':   d.get('provider_name') or d.get('selected_provider', ''),
+        'creation_time':   d.get('creation_time') or d.get('created_at', ''),
+        'update_time':     d.get('update_time') or d.get('updated_at', ''),
         'deployment_type': 'CLOUD',
         'locked':          0,
         'updatable':       0,
         'physicalId':      outputs.get('vm_ip', ''),
-        'endpoint':        outputs.get('endpoint', outputs.get('vm_ip', '')),
+        'endpoint':        d.get('endpoint') or outputs.get('endpoint', outputs.get('vm_ip', '')),
         'outputs':         outputs,
-        'requested_by':    d.get('requested_by', ''),
+        'requested_by':    d.get('sub', '')[:8],
     }
+
+def _parse_ports(form):
+    """
+    Translate the legacy ports widget (hidden input name='ports') into the
+    open_ports format used by the agent. SSH (22) is always included.
+    Supports single ports ("80") and ranges ("[8080,8082]").
+    """
+    out = [{"port": 22, "protocol": "tcp", "cidr": "0.0.0.0/0"}]
+    raw = form.get('ports') or form.get('open_ports') or ''
+    if not raw:
+        return out
+    try:
+        items = json.loads(raw)
+        if isinstance(items, dict):
+            items = list(items.values())
+    except Exception:
+        return out
+    for it in items:
+        src   = str(it.get('source', '')).strip()
+        proto = (it.get('protocol') or 'tcp').lower()
+        cidr  = (it.get('remote_cidr') or '0.0.0.0/0').strip()
+        m = re.match(r'^\[(\d+)\s*,\s*(\d+)\]$', src)
+        if m:
+            out.append({"port": int(m.group(1)), "port_max": int(m.group(2)),
+                        "protocol": proto, "cidr": cidr})
+        elif src.isdigit():
+            out.append({"port": int(src), "protocol": proto, "cidr": cidr})
+    return out
 
 
 @laniakea_v399_bp.route('/deployments')
@@ -117,13 +147,23 @@ def deplog(dep_uuid):
 def depdel(dep_uuid):
     access_token = iam_blueprint.session.token['access_token']
     try:
-        requests.delete(
+        resp = requests.delete(
             f"{LANIAKEA_API_URL}/api/deployments/{dep_uuid}",
             headers=_headers(access_token),
+            json={"aai_token": access_token,
+                  "group": session.get('active_usergroup', 'default')},
             verify=LANIAKEA_API_VERIFY,
             timeout=15,
         )
-        flash(f"Deployment {dep_uuid} deletion requested.", 'info')
+        if resp.ok:
+            data = resp.json()
+            if data.get("destroy_enqueued"):
+                flash(f"Destroy of {dep_uuid} started: resources are being removed.", 'info')
+            else:
+                flash(f"Deployment {dep_uuid} removed.", 'success')
+        else:
+            detail = resp.json().get('detail', f'HTTP {resp.status_code}')
+            flash(f"Delete failed: {detail}", 'warning')
     except Exception as exc:
         flash(str(exc), 'danger')
     return redirect(url_for('laniakea_v399_bp.showdeployments'))
@@ -136,7 +176,7 @@ def createdep():
     form              = request.form.to_dict()
     selected_template = request.args.get('template', '')
     user_sub          = session.get('userid', '')
-    user_email        = session.get('email', '')
+    user_email        = session.get('useremail', '')
     username          = session.get('preferred_username', user_sub[:8] if user_sub else 'unknown')
     ssh_pub_key       = dbhelpers.get_ssh_pub_key(user_sub) or ''
     deployment_uuid   = str(uuid_generator.uuid1())
@@ -179,6 +219,8 @@ def createdep():
 
     network_type = 'private' if 'priv' in selected_template else 'public'
 
+    service_type = 'galaxy' if 'galaxy' in selected_template.lower() else 'vm'
+
     is_aws            = cloud.get('provider', '') == 'aws' or target_cloud == 'aws'
     selected_provider = "AWS" if is_aws else "Openstack"
 
@@ -216,12 +258,14 @@ def createdep():
             "template":       cloud.get('template', {"url": "", "path": "aws", "branch": "main"}),
             "inputs": {
                 "instance_type":   flavor,
+                "hostname":        form.get('hostname', 'LANIAKEA-vm01'),
                 "image":           image,
                 "storage_size":    form.get('storage_size', ''),
                 "os_distribution": form.get('os_distribution', ''),
                 "os_version":      form.get('os_version', ''),
                 "network_type":    network_type,
-                "open_ports":      json.loads(form.get('open_ports', '[]') or '[]'),
+                "open_ports":      _parse_ports(form),
+                #"open_ports":      json.loads(form.get('open_ports', '[]') or '[]'),
             },
         }
     else:
@@ -239,12 +283,14 @@ def createdep():
             "template":                    cloud.get('template', {"url": "", "path": target_cloud, "branch": "main"}),
             "inputs": {
                 "flavor":          flavor,
+                "hostname":        form.get('hostname', 'LANIAKEA-vm01'),
                 "image":           image,
                 "os_distribution": form.get('os_distribution', ''),
                 "os_version":      form.get('os_version', ''),
                 "storage_size":    form.get('storage_size', ''),
                 "network_type":    network_type,
-                "open_ports":      json.loads(form.get('open_ports', '[]') or '[]'),
+                "open_ports":      _parse_ports(form),
+                #"open_ports":      json.loads(form.get('open_ports', '[]') or '[]'),
             },
         }
 
@@ -252,6 +298,7 @@ def createdep():
         "deployment_uuid":   deployment_uuid,
         "timestamp":         timestamp,
         "description":       form.get('additional_description', ''),
+        "service_type": service_type,
         "selected_provider": selected_provider,
         "auth": {
             "aai_token": access_token,

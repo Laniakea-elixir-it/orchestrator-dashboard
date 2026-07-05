@@ -1,5 +1,6 @@
 # Copyright (c) Istituto Nazionale di Fisica Nucleare (INFN). 2019-2020
 # Modifications Copyright (c) CNR-IBIOM and ELIXIR-IT. 2024-2026
+# Modifications Copyright (c) Riccardo Caccia. 2026
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -78,9 +79,17 @@ def get_account_info():
 
 def set_user_info():
     account_info = get_account_info()
+    ###
+    if not account_info.ok:
+        raise Exception(f"userinfo failed ({account_info.status_code})")
     #account_info = iam_blueprint.session.get('/userinfo')
     account_info_json = account_info.json()
-    user_groups = account_info_json['groups']
+    #user_groups = account_info_json['groups']
+    user_groups = account_info_json.get('groups', [])
+    session['given_name'] = account_info_json['given_name']        
+    session['family_name'] = account_info_json['family_name']
+    session['organisation_name'] = account_info_json.get('organisation_name', 'keycloak')
+
     user_id = account_info_json['sub']
 
     supported_groups = []
@@ -97,7 +106,7 @@ def set_user_info():
     session['useremail'] = account_info_json['email']
     session['userrole'] = 'user'
     session['gravatar'] = utils.avatar(account_info_json['email'], 26)
-    session['organisation_name'] = account_info_json['organisation_name']
+    #session['organisation_name'] = account_info_json['organisation_name']
     session['usergroups'] = user_groups
     session['supported_usergroups'] = supported_groups
     if 'active_usergroup' not in session:
@@ -107,7 +116,8 @@ def update_user_info():
     account_info = get_account_info()
     #account_info = iam_blueprint.session.get('/userinfo')
     account_info_json = account_info.json()
-    user_groups = account_info_json['groups']
+    #user_groups = account_info_json['groups']
+    user_groups = account_info_json.get('groups', [])
     user_id = account_info_json['sub']
 
     supported_groups = []

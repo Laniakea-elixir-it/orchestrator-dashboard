@@ -15,6 +15,7 @@
             </div>
             <div class="col-md-6 text-right">
               <!-- Button -->
+	      <button type=button class='btn btn-primary' id='followBtn' onclick='toggleFollow()'><span class='fas fa-play mr-2'></span>Following</button>
 	      <button type=button class='btn btn-outline-primary' onclick='location.reload(true)'><span class='fas fa-sync mr-2'></span>Refresh</button>
               <button type=button class="btn btn-small btn-outline-secondary" onclick="history.back()"><span class="fas fa-arrow-left mr-2"></span> Back</button>
             </div>
@@ -59,6 +60,36 @@ document.getElementById("downloadBtn").addEventListener("click", function(){
 
     download(filename, text);
 }, false);
+
+
+let follow = sessionStorage.getItem('deplog_follow') !== 'off';
+
+function renderFollowBtn() {
+  const btn = document.getElementById('followBtn');
+  if (follow) {
+    btn.className = 'btn btn-primary';
+    btn.innerHTML = "<span class='fas fa-pause mr-2'></span>Following";
+  } else {
+    btn.className = 'btn btn-outline-primary';
+    btn.innerHTML = "<span class='fas fa-play mr-2'></span>Follow";
+  }
+}
+
+function toggleFollow() {
+  follow = !follow;
+  sessionStorage.setItem('deplog_follow', follow ? 'on' : 'off');
+  renderFollowBtn();
+}
+
+renderFollowBtn();
+
+// reload every 5s if follow
+setInterval(() => { if (follow) location.reload(); }, 5000);
+
+// tail-like: after load go at the end of the page (only if following)
+if (follow) {
+  window.scrollTo(0, document.body.scrollHeight);
+}
 
 </script>
 {% endblock %}
