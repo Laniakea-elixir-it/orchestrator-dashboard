@@ -542,8 +542,8 @@ def configure():
 
         sla_id = tosca_helpers.getslapolicy(template)
 
-        slas = sla.get_slas(access_token, settings.orchestratorConf['slam_url'], settings.orchestratorConf['cmdb_url'],
-                            template["deployment_type"])
+        #slas = sla.get_slas(access_token, settings.orchestratorConf['slam_url'], settings.orchestratorConf['cmdb_url'],
+        #                    template["deployment_type"])
 
         ssh_pub_key = dbhelpers.get_ssh_pub_key(session['userid'])
 
@@ -557,8 +557,8 @@ def configure():
                                provider_timeout=app.config['PROVIDER_TIMEOUT'],
                                selectedTemplate=selected_tosca,
                                ssh_pub_key=ssh_pub_key,
-                               slas=slas,
-                               sla_id=sla_id,
+                               #slas=slas,
+                               #sla_id=sla_id,
                                update=False)
 
 
