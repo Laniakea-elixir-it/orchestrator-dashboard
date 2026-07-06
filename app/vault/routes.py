@@ -383,6 +383,8 @@ def download_ovpn(vpn_conf_filename):
     )
 
 #----------------------------------
+# TODO (riccardo): actually those call should not be done dirctly to VAULT,
+# but to the Core API. So we can move to the laniakea_v399 blueprint.
 @vault_bp.route('/service_creds/list', methods=['GET'])
 @auth.authorized_with_valid_token
 def list_service_creds2():
@@ -403,8 +405,8 @@ def read_service_creds2():
     # PLACEHOLDER: hardcoded test data to preview the modal prefill, remove once Vault lookup is implemented
     if name == 'garr_creds':
         return jsonify({
-            'openstack_app_credential_id': '3550639b48e24dec983b420ad50ce237',
-            'openstack_app_credential_secret': 'YXBTFdjWHTfFZtB-5YieZIxcYSn2Nb32F2RsyrlHUlOKMuhWWrGICv7HS06TYfuvHVpecZgUFJ_rwpLyR_iN0Q',
+            'openstack_app_credential_id': 'fake_client_id',
+            'openstack_app_credential_secret': 'fake_client_secret',
             'openstack_auth_url': 'https://keystone.cloud.garr.it:5000/v3',
             'openstack_interface': 'public',
             'openstack_region_name': 'garr-pa1'
