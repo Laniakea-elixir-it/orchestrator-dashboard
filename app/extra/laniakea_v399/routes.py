@@ -219,7 +219,8 @@ def createdep():
 
     network_type = 'private' if 'priv' in selected_template else 'public'
 
-    service_type = 'galaxy' if 'galaxy' in selected_template.lower() else 'vm'
+    service_type = 'galaxy' if 'galaxy' in os.path.basename(selected_template).lower() else 'vm'
+    #service_type = 'galaxy' if 'galaxy' in selected_template.lower() else 'vm'
 
     is_aws            = cloud.get('provider', '') == 'aws' or target_cloud == 'aws'
     selected_provider = "AWS" if is_aws else "Openstack"

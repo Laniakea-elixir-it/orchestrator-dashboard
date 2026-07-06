@@ -60,7 +60,7 @@
         {% endif %}
         <tr>
             <td><strong>{{deployment.description}}</strong></td>
-            <td><a href="{{ url_for('deployments_bp.depoutput', depid=deployment.uuid) }}">{{deployment.uuid}}</a></td>
+	    <td><a href="{{ url_for('deployments_bp.depoutput', depid=deployment.uuid) }}">{{deployment.uuid}}</a></td>
             <td>
                 {% if "COMPLETE" in deployment.status %}
                 <span class="badge badge-success"/>
@@ -79,8 +79,9 @@
             <td>
               <div class="btn-group">
                 <!-- DETAILS -->
-               <a class="btn btn-info btn-sm" href="{{ url_for('deployments_bp.depoutput', depid=deployment.uuid) }}"><span class="fas fa-bars mr-2 grey-text"></span>Details</a>
-                <button type="button" class="btn btn-info dropdown-toggle dropdown-toggle-split" data-toggle="dropdown">
+                <button type="button" class="btn btn-info btn-sm dropdown-toggle" data-toggle="dropdown">
+                    <span class="fas fa-bars mr-2 grey-text"></span>Details
+                </button>
                   <span class="sr-only">Toggle Dropdown</span>
                 </button>
                 <div class="dropdown-menu">
