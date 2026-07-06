@@ -40,11 +40,11 @@ deployments_bp = Blueprint('deployments_bp', __name__,
                            template_folder='templates',
                            static_folder='static')
 
-iam_base_url = settings.iamUrl
-iam_client_id = settings.iamClientID
-iam_client_secret = settings.iamClientSecret
-
-#issuer = auth.get_active_issuer()
+#iam_base_url = settings.iamUrl
+#iam_client_id = settings.iamClientID
+#iam_client_secret = settings.iamClientSecret
+#
+#issuer = settings.iamUrl
 #if not issuer.endswith('/'):
 #    issuer += '/'
 
@@ -540,10 +540,21 @@ def configure():
                 overrides = v['group_overrides'][session['active_usergroup']]
                 template['inputs'][k] = {**v, **overrides}
 
-        sla_id = tosca_helpers.getslapolicy(template)
+        if session.get('auth_provider') == 'iam':
+            sla_id = tosca_helpers.getslapolicy(template)
+            slas = sla.get_slas(access_token, settings.orchestratorConf['slam_url'], settings.orchestratorConf['cmdb_url'], template["deployment_type"])
 
-        slas = sla.get_slas(access_token, settings.orchestratorConf['slam_url'], settings.orchestratorConf['cmdb_url'],
-                            template["deployment_type"])
+        elif session.get('auth_provider') == 'keycloak':
+            sla_id = []
+            slas = {}
+        else:
+            raise Exception("Unsupported Identity provider")
+
+
+        #sla_id = tosca_helpers.getslapolicy(template)
+
+        #slas = sla.get_slas(access_token, settings.orchestratorConf['slam_url'], settings.orchestratorConf['cmdb_url'],
+        #                    template["deployment_type"])
 
         ssh_pub_key = dbhelpers.get_ssh_pub_key(session['userid'])
 
@@ -730,14 +741,10 @@ def createdep():
                         vault_token_token_time_duration = app.config.get("WRITE_TOKEN_TIME_DURATION")
                         vault_token_renewal_time_duration = app.config.get("WRITE_TOKEN_RENEWAL_TIME_DURATION")
 
-                iam_base_url = settings.iamUrl
-                iam_client_id = settings.iamClientID
-                iam_client_secret = settings.iamClientSecret
-
                 # Token exchange for bound audience
-                jwt_token = auth.exchange_token_with_audience(iam_base_url,
-                                                              iam_client_id,
-                                                              iam_client_secret,
+                jwt_token = auth.exchange_token_with_audience(auth.get_active_idp_url(),
+                                                              auth.get_active_client_id(),
+                                                              auth.get_active_client_secret(),
                                                               access_token,
                                                               vault_bound_audience)
                 # Retrieve vault client for wrapping token
@@ -864,16 +871,14 @@ def createdep():
             try:
                 del inputs[key]
 
-                iam_base_url = settings.iamUrl
-                iam_client_id = settings.iamClientID
-                iam_client_secret = settings.iamClientSecret
+                idp_base_url = auth.get_active_idp_url()
 
-                username = '{}_{}'.format(session['userid'], urlparse(iam_base_url).netloc)
+                username = '{}_{}'.format(session['userid'], urlparse(idp_base_url).netloc)
                 email = session['useremail']
 
-                jwt_token = auth.exchange_token_with_audience(iam_base_url,
-                                                      iam_client_id,
-                                                      iam_client_secret,
+                jwt_token = auth.exchange_token_with_audience(idp_base_url,
+                                                      auth.get_active_client_id(),
+                                                      auth.get_active_client_secret(),
                                                       access_token,
                                                       app.config.get('VAULT_BOUND_AUDIENCE'))
 
@@ -1063,9 +1068,9 @@ def delete_secret_from_vault(access_token, secret_path):
     vault_delete_token_renewal_time_duration = app.config.get("DELETE_TOKEN_RENEWAL_TIME_DURATION")
     vault_role = app.config.get("VAULT_ROLE")
 
-    jwt_token = auth.exchange_token_with_audience(iam_base_url,
-                                                  iam_client_id,
-                                                  iam_client_secret,
+    jwt_token = auth.exchange_token_with_audience(auth.get_active_idp_url(),
+                                                  auth.get_active_client_id(),
+                                                  auth.get_active_client_secret(),
                                                   access_token,
                                                   vault_bound_audience)
 
@@ -1097,13 +1102,9 @@ def save_secrets_to_vault(access_token, secret_path, keydict):
     vault_write_token_time_duration = app.config.get("WRITE_TOKEN_TIME_DURATION")
     vault_write_token_renewal_time_duration = app.config.get("WRITE_TOKEN_RENEWAL_TIME_DURATION")
 
-    iam_base_url = settings.iamUrl
-    iam_client_id = settings.iamClientID
-    iam_client_secret = settings.iamClientSecret
-
-    jwt_token = auth.exchange_token_with_audience(iam_base_url,
-                                                  iam_client_id,
-                                                  iam_client_secret,
+    jwt_token = auth.exchange_token_with_audience(auth.get_active_idp_url(),
+                                                  auth.get_active_client_id(),
+                                                  auth.get_active_client_secret(),
                                                   access_token,
                                                   vault_bound_audience)
 

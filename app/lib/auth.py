@@ -28,17 +28,17 @@ def active_session():
         return keycloak_blueprint.session
     return iam_blueprint.session
 
-
 def get_access_token():
     """Returns the access token from the active session"""
     return active_session().token['access_token']
 
+def get_active_idp_url():
+    if session.get('auth_provider') == 'keycloak':
+        return settings.keycloakUrl
+    return settings.iamUrl
 
 def get_active_issuer():
-    if session.get('auth_provider') == 'keycloak':
-        url = settings.keycloakUrl
-    else:
-        url = settings.iamUrl
+    url = get_active_idp_url()
     return url if url.endswith('/') else url + '/'
 
 
@@ -174,19 +174,35 @@ def only_for_admin(f):
     return decorated_function
 
 
-def exchange_token_with_audience(iam_url, client_id, client_secret, iam_token, audience):
+def exchange_token_with_audience(idp_url, client_id, client_secret, access_token, audience):
 
-    payload_string = '{ "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange", "audience": "' \
-                     + audience + '", "subject_token": "' + iam_token + '", "scope": "openid profile" }'
+    active_idp = get_active_issuer()
 
-    # Convert string payload to dictionary
-    payload = ast.literal_eval(payload_string)
+    if session.get('auth_provider') == 'iam':
+        idp_url = idp_url + "/token"
+        payload = {
+                "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                "audience": audience,
+                "subject_token": access_token,
+                "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+                "scope": "openid email profile offline_access"
+                }
+    elif session.get('auth_provider') == 'keycloak':
+        idp_url = idp_url + "/protocol/openid-connect/token"
+        payload = {
+                "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                "subject_token": access_token,
+                "subject_token_type": "urn:ietf:params:oauth:token-type:access_token",
+                "scope": "orchestrator-dashboard-audience"
+                }
+    else:
+        raise Exception("Unsupported Identity provider")
 
-    iam_response = requests.post(iam_url + "/token", data=payload, auth=(client_id, client_secret), verify=False)
+    idp_response = requests.post(idp_url, data=payload, auth=(client_id, client_secret), verify=False)
 
-    if not iam_response.ok:
-        raise Exception("Error exchanging token: {} - {}".format(iam_response.status_code, iam_response.text))
+    if not idp_response.ok:
+        raise Exception("Error exchanging token: {} - {}".format(idp_response.status_code, idp_response.text))
 
-    deserialized_iam_response = json.loads(iam_response.text)
+    deserialized_idp_response = json.loads(idp_response.text)
 
-    return deserialized_iam_response['access_token']
+    return deserialized_idp_response['access_token']
