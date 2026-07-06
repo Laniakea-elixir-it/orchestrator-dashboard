@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from flask import Blueprint, render_template, flash, request, redirect, url_for, session, json, Response
+from flask import Blueprint, render_template, flash, request, redirect, url_for, session, json, Response, jsonify
 from app import app, vaultservice
 from app.lib import auth, sshkey as sshkeyhelpers, settings, dbhelpers
 from app.providers import sla
@@ -381,3 +381,50 @@ def download_ovpn(vpn_conf_filename):
         mimetype='application/octet-stream',
         headers={ 'Content-Disposition': f'attachment; filename={vpn_conf_filename}' }
     )
+
+#----------------------------------
+@vault_bp.route('/service_creds/list', methods=['GET'])
+@auth.authorized_with_valid_token
+def list_service_creds2():
+    # TODO (riccardo): list existing paths under {user_sub}/service_creds/ in Vault
+    # must return a JSON list of objects: [{"name": <user-chosen path segment>, "service_type": "openstack" | "aws"}]
+    # service_type is needed by the frontend to pick the right icon and form fields
+    # empty list means no credentials configured yet
+    # PLACEHOLDER: hardcoded test data to preview the table, remove once Vault lookup is implemented
+    return jsonify([{"name": "garr_creds", "service_type": "openstack"}])
+
+
+@vault_bp.route('/service_creds/read', methods=['GET'])
+@auth.authorized_with_valid_token
+def read_service_creds2():
+    name = request.args.get('name')
+    # TODO (riccardo): read credentials from Vault at {user_sub}/service_creds/{name}/
+    # must return a JSON object with the fields of the corresponding form
+    # PLACEHOLDER: hardcoded test data to preview the modal prefill, remove once Vault lookup is implemented
+    if name == 'garr_creds':
+        return jsonify({
+            'openstack_app_credential_id': '3550639b48e24dec983b420ad50ce237',
+            'openstack_app_credential_secret': 'YXBTFdjWHTfFZtB-5YieZIxcYSn2Nb32F2RsyrlHUlOKMuhWWrGICv7HS06TYfuvHVpecZgUFJ_rwpLyR_iN0Q',
+            'openstack_auth_url': 'https://keystone.cloud.garr.it:5000/v3',
+            'openstack_interface': 'public',
+            'openstack_region_name': 'garr-pa1'
+        })
+    return jsonify({})
+
+
+@vault_bp.route('/service_creds/write', methods=['POST'])
+@auth.authorized_with_valid_token
+def write_service_creds2():
+    name = request.form.get('name')
+    service_type = request.form.get('service_type')
+    # TODO (riccardo): create/update path {user_sub}/service_creds/{name}/ in Vault
+    # and write the submitted fields as the secret content
+    return jsonify({'status': 'ok'})
+
+
+@vault_bp.route('/service_creds/delete', methods=['DELETE'])
+@auth.authorized_with_valid_token
+def delete_service_creds2():
+    name = request.args.get('name')
+    # TODO (riccardo): delete path {user_sub}/service_creds/{name}/ from Vault
+    return jsonify({'status': 'ok'})
