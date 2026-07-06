@@ -540,7 +540,18 @@ def configure():
                 overrides = v['group_overrides'][session['active_usergroup']]
                 template['inputs'][k] = {**v, **overrides}
 
-        sla_id = tosca_helpers.getslapolicy(template)
+        if session.get('auth_provider') == 'iam':
+            sla_id = tosca_helpers.getslapolicy(template)
+            slas = sla.get_slas(access_token, settings.orchestratorConf['slam_url'], settings.orchestratorConf['cmdb_url'], template["deployment_type"])
+
+        elif session.get('auth_provider') == 'keycloak':
+            sla_id = []
+            slas = {}
+        else:
+            raise Exception("Unsupported Identity provider")
+
+
+        #sla_id = tosca_helpers.getslapolicy(template)
 
         #slas = sla.get_slas(access_token, settings.orchestratorConf['slam_url'], settings.orchestratorConf['cmdb_url'],
         #                    template["deployment_type"])
@@ -557,8 +568,8 @@ def configure():
                                provider_timeout=app.config['PROVIDER_TIMEOUT'],
                                selectedTemplate=selected_tosca,
                                ssh_pub_key=ssh_pub_key,
-                               #slas=slas,
-                               #sla_id=sla_id,
+                               slas=slas,
+                               sla_id=sla_id,
                                update=False)
 
 
