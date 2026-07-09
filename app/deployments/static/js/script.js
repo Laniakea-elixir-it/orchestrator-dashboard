@@ -19,32 +19,54 @@ function hideOrShow(el) {
 };
 
 // Check password double time.
-function checkSecretMatch(input) {
-  var confirmInput = document.getElementById(input.id + '_confirm');
-  var msg = document.getElementById(input.id.replace('_confirm', '') + '_match_msg');
-  if (!confirmInput || !msg) return;
-
-  var baseInput = document.getElementById(input.id.replace('_confirm', ''));
+function checkSecretMatch(baseInput) {
+  var confirmInput = document.getElementById(baseInput.id + '_confirm');
+  var msg = document.getElementById(baseInput.id + '_match_msg');
+  if (!confirmInput || !msg) return true;
 
   if (!confirmInput.value) {
     msg.textContent = '';
-    msg.classList.remove('text-danger');
+    confirmInput.classList.remove('is-valid', 'is-invalid');
     confirmInput.setCustomValidity('');
-    return;
+    return true;
   }
+
   if (baseInput.value !== confirmInput.value) {
     msg.textContent = 'Passwords do not match.';
     msg.classList.add('text-danger');
+    confirmInput.classList.remove('is-valid');
+    confirmInput.classList.add('is-invalid');
     confirmInput.setCustomValidity('Passwords do not match.');
-  } else {
-    msg.textContent = 'Passwords match.';
-    msg.classList.remove('text-danger');
-    confirmInput.setCustomValidity('');
+    return false;
   }
+
+  msg.textContent = 'Passwords match.';
+  msg.classList.remove('text-danger');
+  confirmInput.classList.remove('is-invalid');
+  confirmInput.classList.add('is-valid');
+  confirmInput.setCustomValidity('');
+  return true;
 }
 
+// live check while user is writing
 $(document).on('input', 'input[data-type="secret"]', function () {
   var id = this.id.endsWith('_confirm') ? this.id.replace('_confirm', '') : this.id;
-  var mainInput = document.getElementById(id);
-  checkSecretMatch(mainInput);
-})
+  var baseInput = document.getElementById(id);
+  if (baseInput) checkSecretMatch(baseInput);
+});
+
+// stop the submit call if the secret check fails
+$(document).on('submit', 'form', function (e) {
+  var allMatch = true;
+
+  $('input[data-type="secret"]').each(function () {
+    if (this.id.endsWith('_confirm')) return;
+    if (!checkSecretMatch(this)) {
+      allMatch = false;
+    }
+  });
+
+  if (!allMatch) {
+    e.preventDefault();
+  }
+});
