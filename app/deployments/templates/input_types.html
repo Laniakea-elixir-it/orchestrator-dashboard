@@ -102,13 +102,14 @@
       <input type="hidden" class="form-control" data-type="{{value.type}}" id="{{key}}" name="{{key}}" value="">
     <!-- end password type -->
 
-    <!-- secret type con conferma, stessa riga -->
+    <!-- secret type -->
     {% elif value.type == "secret" %}
     <div class="d-flex" style="gap: 16px;">
       <div class="flex-fill">
         <input type="password" class="form-control" data-type="{{value.type}}"
                id="{{key}}" name="{{key}}" data-toggle="password"
                placeholder="Enter your secret"
+               autocomplete="new-password"
                {% if value.required %}required{% endif %} {{mode}}>
       </div>
       <div class="flex-fill">
@@ -116,6 +117,7 @@
         <input type="password" class="form-control" data-type="{{value.type}}"
                id="{{key}}_confirm" name="{{key}}_confirm" data-toggle="password"
                placeholder="Confirm your secret"
+               autocomplete="new-password"
                {% if value.required %}required{% endif %} {{mode}}>
       </div>
     </div>
