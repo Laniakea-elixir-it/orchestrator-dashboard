@@ -102,9 +102,24 @@
       <input type="hidden" class="form-control" data-type="{{value.type}}" id="{{key}}" name="{{key}}" value="">
     <!-- end password type -->
 
-    <!-- secret type -->
+    <!-- secret type con conferma, stessa riga -->
     {% elif value.type == "secret" %}
-      <input type="password" class="form-control" data-type="{{value.type}}" id="{{key}}" name="{{key}}" data-toggle="password" placeholder="Enter your secret" {% if value.required %}required{%endif%} {{mode}}>
+    <div class="d-flex" style="gap: 16px;">
+      <div class="flex-fill">
+        <input type="password" class="form-control" data-type="{{value.type}}"
+               id="{{key}}" name="{{key}}" data-toggle="password"
+               placeholder="Enter your secret"
+               {% if value.required %}required{% endif %} {{mode}}>
+      </div>
+      <div class="flex-fill">
+        <label for="{{key}}_confirm" class="sr-only">Confirm password</label>
+        <input type="password" class="form-control" data-type="{{value.type}}"
+               id="{{key}}_confirm" name="{{key}}_confirm" data-toggle="password"
+               placeholder="Confirm your secret"
+               {% if value.required %}required{% endif %} {{mode}}>
+      </div>
+    </div>
+    <small class="form-text text-muted" id="{{key}}_match_msg"></small>
     <!-- end secret type -->
 
     <!-- random_secret type -->
