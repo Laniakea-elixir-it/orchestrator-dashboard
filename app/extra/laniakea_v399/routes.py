@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from flask import Blueprint, render_template, flash, request, redirect, url_for, session
-from app import app, iam_blueprint
+from app import app #,iam_blueprint
 from app.lib import auth, dbhelpers, settings
 import json
 import os
@@ -47,6 +47,18 @@ def _get_laniakea_token(access_token):
 def _headers(access_token):
     return {"Authorization": f"Bearer {_get_laniakea_token(access_token)}"}
 
+def get_user_ssh_key():
+    """Fetch the user's SSH public key from the Core API (Vault-backed).
+    Returns the key string or None. The dashboard stays stateless."""
+    try:
+        r = requests.get(f"{LANIAKEA_API_URL}/profile/ssh_key",
+                         headers=_headers(auth.get_access_token()),
+                         verify=False, timeout=10)
+        if r.ok:
+            return r.json().get("ssh_key") or None
+    except Exception:
+        pass
+    return None
 
 def _normalize(d):
     outputs = d.get('outputs') or {}
@@ -105,7 +117,8 @@ def _parse_ports(form):
 @laniakea_v399_bp.route('/deployments')
 @auth.authorized_with_valid_token
 def showdeployments():
-    access_token = iam_blueprint.session.token['access_token']
+    #access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
     deployments  = []
     try:
         resp = requests.get(
@@ -126,7 +139,8 @@ def showdeployments():
 @laniakea_v399_bp.route('/deployments/<dep_uuid>/log')
 @auth.authorized_with_valid_token
 def deplog(dep_uuid):
-    access_token = iam_blueprint.session.token['access_token']
+    #access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
     try:
         resp = requests.get(
             f"{LANIAKEA_API_URL}/api/deployments/{dep_uuid}/logs",
@@ -145,7 +159,8 @@ def deplog(dep_uuid):
 @laniakea_v399_bp.route('/deployments/<dep_uuid>/delete', methods=['GET', 'POST'])
 @auth.authorized_with_valid_token
 def depdel(dep_uuid):
-    access_token = iam_blueprint.session.token['access_token']
+    #access_token = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
     try:
         resp = requests.delete(
             f"{LANIAKEA_API_URL}/api/deployments/{dep_uuid}",
@@ -172,20 +187,25 @@ def depdel(dep_uuid):
 @laniakea_v399_bp.route('/createdep', methods=['POST'])
 @auth.authorized_with_valid_token
 def createdep():
-    access_token      = iam_blueprint.session.token['access_token']
+    #access_token      = iam_blueprint.session.token['access_token']
+    access_token = auth.get_access_token()
     form              = request.form.to_dict()
     selected_template = request.args.get('template', '')
     user_sub          = session.get('userid', '')
     user_email        = session.get('useremail', '')
     username          = session.get('preferred_username', user_sub[:8] if user_sub else 'unknown')
     ssh_pub_key       = dbhelpers.get_ssh_pub_key(user_sub) or ''
+    #ssh_pub_key       = get_user_ssh_key() or ''
     deployment_uuid   = str(uuid_generator.uuid1())
 
     from datetime import datetime, timezone
     timestamp = datetime.now(timezone.utc).isoformat()
-
+    
     # Target cloud selected by the user in the form
     target_cloud = form.get('extra_opts.selectedCloud', 'openstack_recas').lower()
+
+    # credentials name
+    credentials_name = form.get('extra_opts.credentialsName', '')
 
     # Load per-cloud config template (auth_url, project_id, endpoints, maps)
     clouds_dir = app.config.get('LANIAKEA_CLOUDS_DIR', '/etc/orchestrator-dashboard/settings/laniakea-clouds')
@@ -299,7 +319,8 @@ def createdep():
         "deployment_uuid":   deployment_uuid,
         "timestamp":         timestamp,
         "description":       form.get('additional_description', ''),
-        "service_type": service_type,
+        "service_type":      service_type,
+        "credentials_name":  credentials_name,
         "selected_provider": selected_provider,
         "auth": {
             "aai_token": access_token,

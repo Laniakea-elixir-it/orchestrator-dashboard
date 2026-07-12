@@ -557,6 +557,8 @@ def configure():
         #                    template["deployment_type"])
 
         ssh_pub_key = dbhelpers.get_ssh_pub_key(session['userid'])
+        #from app.extra.laniakea_v399.routes import get_user_ssh_key
+        #ssh_pub_key = get_user_ssh_key()
 
         if not ssh_pub_key and app.config.get('FEATURE_REQUIRE_USER_SSH_PUBKEY') == 'yes':
             flash('Warning! You will not be able to deploy your service as no Public SSH key has been uploaded.', "danger")

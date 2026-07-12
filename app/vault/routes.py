@@ -19,7 +19,8 @@ from app.lib import auth, sshkey as sshkeyhelpers, settings, dbhelpers
 from app.providers import sla
 from app.models.Deployment import Deployment
 from app.models.User import User
-
+import requests as _rq
+from app.extra.laniakea_v399.routes import _headers, LANIAKEA_API_URL, get_user_ssh_key
 
 vault_bp = Blueprint('vault_bp', __name__, template_folder='templates', static_folder='static')
 
@@ -104,6 +105,11 @@ def create_ssh_key(subject):
 
     dbhelpers.update_user(subject, dict(sshkey=pubkey.decode("utf-8")))
 
+    _rq.put(f"{LANIAKEA_API_URL}/profile/ssh_key",
+            json={"ssh_key": pubkey.decode("utf-8"),
+                  "ssh_private_key": privkey.decode("utf-8")},
+            headers=_headers(auth.get_access_token()), verify=False, timeout=10)
+
     return redirect(url_for('vault_bp.ssh_keys'))
 
 
@@ -111,6 +117,7 @@ def create_ssh_key(subject):
 @auth.authorized_with_valid_token
 def ssh_keys():
     sshkey = dbhelpers.get_ssh_pub_key(session['userid'])
+    #sshkey = get_user_ssh_key()
     return render_template('ssh_keys.html', sshkey=sshkey)
 
 
@@ -196,6 +203,9 @@ def delete_ssh_key(subject):
 
     dbhelpers.delete_ssh_key(subject)
 
+    _rq.delete(f"{LANIAKEA_API_URL}/profile/ssh_key",
+               headers=_headers(auth.get_access_token()), verify=False, timeout=10)
+
     access_token = auth.get_access_token()
     privkey_key = session['userid'] + '/ssh_private_key'
 
@@ -228,6 +238,10 @@ def update_ssh_key(subject):
         return redirect(url_for('vault_bp.ssh_keys'))
 
     dbhelpers.update_user(subject, dict(sshkey=sshkey))
+
+    _rq.put(f"{LANIAKEA_API_URL}/profile/ssh_key",
+            json={"ssh_key": sshkey},
+            headers=_headers(auth.get_access_token()), verify=False, timeout=10)
 
     return redirect(url_for('vault_bp.ssh_keys'))
 
@@ -382,51 +396,35 @@ def download_ovpn(vpn_conf_filename):
         headers={ 'Content-Disposition': f'attachment; filename={vpn_conf_filename}' }
     )
 
-#----------------------------------
-# TODO (riccardo): actually those call should not be done dirctly to VAULT,
-# but to the Core API. So we can move to the laniakea_v399 blueprint.
 @vault_bp.route('/service_creds/list', methods=['GET'])
 @auth.authorized_with_valid_token
 def list_service_creds2():
-    # TODO (riccardo): list existing paths under {user_sub}/service_creds/ in Vault
-    # must return a JSON list of objects: [{"name": <user-chosen path segment>, "service_type": "openstack" | "aws"}]
-    # service_type is needed by the frontend to pick the right icon and form fields
-    # empty list means no credentials configured yet
-    # PLACEHOLDER: hardcoded test data to preview the table, remove once Vault lookup is implemented
-    return jsonify([{"name": "garr_creds", "service_type": "openstack"}])
-
+    r = _rq.get(f"{LANIAKEA_API_URL}/profile/service_creds",
+                headers=_headers(auth.get_access_token()), verify=False, timeout=10)
+    return jsonify(r.json() if r.ok else []), (200 if r.ok else r.status_code)
 
 @vault_bp.route('/service_creds/read', methods=['GET'])
 @auth.authorized_with_valid_token
 def read_service_creds2():
-    name = request.args.get('name')
-    # TODO (riccardo): read credentials from Vault at {user_sub}/service_creds/{name}/
-    # must return a JSON object with the fields of the corresponding form
-    # PLACEHOLDER: hardcoded test data to preview the modal prefill, remove once Vault lookup is implemented
-    if name == 'garr_creds':
-        return jsonify({
-            'openstack_app_credential_id': 'fake_client_id',
-            'openstack_app_credential_secret': 'fake_client_secret',
-            'openstack_auth_url': 'https://keystone.cloud.garr.it:5000/v3',
-            'openstack_interface': 'public',
-            'openstack_region_name': 'garr-pa1'
-        })
-    return jsonify({})
-
+    name = request.args.get('name', '')
+    r = _rq.get(f"{LANIAKEA_API_URL}/profile/service_creds/{name}",
+                headers=_headers(auth.get_access_token()), verify=False, timeout=10)
+    return jsonify(r.json() if r.ok else {}), (200 if r.ok else r.status_code)
 
 @vault_bp.route('/service_creds/write', methods=['POST'])
 @auth.authorized_with_valid_token
 def write_service_creds2():
-    name = request.form.get('name')
-    service_type = request.form.get('service_type')
-    # TODO (riccardo): create/update path {user_sub}/service_creds/{name}/ in Vault
-    # and write the submitted fields as the secret content
-    return jsonify({'status': 'ok'})
-
+    payload = {k: v for k, v in request.form.items()}
+    name = payload.pop('name', '')
+    r = _rq.put(f"{LANIAKEA_API_URL}/profile/service_creds/{name}",
+                json=payload, headers=_headers(auth.get_access_token()),
+                verify=False, timeout=10)
+    return jsonify(r.json() if r.ok else {'status': 'error'}), (200 if r.ok else r.status_code)
 
 @vault_bp.route('/service_creds/delete', methods=['DELETE'])
 @auth.authorized_with_valid_token
 def delete_service_creds2():
-    name = request.args.get('name')
-    # TODO (riccardo): delete path {user_sub}/service_creds/{name}/ from Vault
-    return jsonify({'status': 'ok'})
+    name = request.args.get('name', '')
+    r = _rq.delete(f"{LANIAKEA_API_URL}/profile/service_creds/{name}",
+                   headers=_headers(auth.get_access_token()), verify=False, timeout=10)
+    return jsonify(r.json() if r.ok else {'status': 'error'}), (200 if r.ok else r.status_code)

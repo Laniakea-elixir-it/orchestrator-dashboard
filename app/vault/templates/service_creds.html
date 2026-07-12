@@ -234,6 +234,10 @@ $(document).ready(function () {
       alert('Please enter a credential name.');
       return;
     }
+    if (!/^[A-Za-z0-9_-]+$/.test(payload.name)) {
+      alert('Invalid name: use only letters, digits, _ or - (e.g. openstack_garr).');
+      return;
+    }
     payload['service_type'] = serviceType;
     $.post("{{ url_for('vault_bp.write_service_creds2') }}", payload)
       .done(function () {
@@ -259,9 +263,8 @@ $(document).ready(function () {
   $('#confirmDeleteBtn').click(function () {
     if (!deleteTarget) return;
     $.ajax({
-      url: "{{ url_for('vault_bp.delete_service_creds2') }}",
-      type: 'DELETE',
-      data: { name: deleteTarget }
+      url: "{{ url_for('vault_bp.delete_service_creds2') }}" + "?name=" + encodeURIComponent(deleteTarget),
+      type: 'DELETE'
     })
     .done(function () { loadList(); })
     .fail(function () { alert('Error deleting credentials.'); })

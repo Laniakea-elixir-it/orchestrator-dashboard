@@ -67,7 +67,14 @@
                         <option value="openstack_recas" selected>ReCaS-Bari (OpenStack)</option>
                         <option value="openstack_garr">GARR (OpenStack)</option>
                     </select>
-                </div>    
+                </div>
+		<div class="form-group">
+                    <label for="credentialsName"><strong>Credentials</strong></label>
+                    <select class="form-control" id="credentialsName" name="extra_opts.credentialsName">
+                        <option value="" selected>Auto (token exchange or match by Auth URL)</option>
+                    </select>
+                    <small class="form-text text-muted">Pick one of your saved Service Credentials, or leave Auto.</small>
+                </div>
                 {% include 'config_form.html' %}
                 <div id="myalert" class="alert alert-danger alert-dismissible fade show" style="display:none;" role="danger">
                   <strong>Warning!</strong> You have not filled some mandatory fields. Please check the red boxes in each tab.
@@ -91,6 +98,13 @@
 $(document).ready(function() {
     $('.js-example-basic-single').select2({
       width: '100%' // https://github.com/select2/select2/issues/4220
+    });
+    // populate the Credentials dropdown from saved Service Credentials
+    $.get("{{ url_for('vault_bp.list_service_creds2') }}").done(function (data) {
+      (data || []).forEach(function (e) {
+        $('#credentialsName').append(
+          $('<option>').val(e.name).text(e.name + ' (' + e.service_type + ')'));
+      });
     });
 });
 </script>
