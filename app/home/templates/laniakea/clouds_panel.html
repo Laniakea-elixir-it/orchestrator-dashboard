@@ -1,0 +1,153 @@
+<!-- Cloud context panel: which cloud the next deployments will target.
+     Populated from /clouds/panel, filtered server-side by user groups.
+     Selection is stored in the server session and re-validated at submit. -->
+<div class="card shadow mb-4" id="cloudPanelCard">
+  <div class="card-header py-3">
+    <div class="row align-items-center">
+      <div class="col-md-6">
+        <h4 class="font-weight-bold text-primary mb-0">Cloud provider</h4>
+      </div>
+      <div class="col-md-6 d-flex align-items-center justify-content-end" style="gap:10px;">
+        <div id="credsPickerWrap" class="input-group" style="max-width:340px; display:none;">
+          <div class="input-group-prepend">
+            <span class="input-group-text"><i class="fas fa-key"></i></span>
+          </div>
+          <select id="credsPicker" class="form-control" title="Credentials used on the selected cloud">
+            <option value="">Auto (match by Auth URL)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card-body py-3">
+    <div class="row" id="cloudTiles">
+      <div class="col-12 text-muted"><i class="fas fa-spinner fa-spin mr-2"></i>Loading available clouds...</div>
+    </div>
+  </div>
+</div>
+
+<style>
+.cloud-tile {
+  border: 2px solid #e3e6f0; border-radius: .5rem; padding: 14px 16px;
+  cursor: pointer; display: flex; align-items: center; gap: 12px;
+  transition: border-color .15s, box-shadow .15s; background: #fff; height: 100%;
+}
+.cloud-tile:hover { border-color: #b7c3f3; }
+.cloud-tile.selected { border-color: #4e73df; box-shadow: 0 0 0 3px rgba(78,115,223,.15); }
+.cloud-tile .cloud-icon {
+  width: 42px; height: 42px; border-radius: .4rem; flex: 0 0 42px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; color: #fff;
+}
+.cloud-icon.openstack { background: #fff; border: 1px solid #e3e6f0; padding: 4px; }
+.cloud-icon.aws       { background: #232f3e; }
+.cloud-tile .cloud-name  { font-weight: 600; margin: 0; line-height: 1.2; }
+.cloud-tile .cloud-label { font-size: .78rem; color: #858796; margin: 0; }
+.cloud-tile .cloud-check { margin-left: auto; color: #4e73df; visibility: hidden; }
+.cloud-tile.selected .cloud-check { visibility: visible; }
+</style>
+
+<script>
+(function () {
+  var PANEL_URL  = "{{ url_for('laniakea_v399_bp.clouds_panel') }}";
+  var SELECT_URL = "{{ url_for('laniakea_v399_bp.clouds_select') }}";
+  var CREDS_URL  = "{{ url_for('vault_bp.list_service_creds2') }}";
+  var userCreds  = [];
+
+  var OPENSTACK_LOGO = "{{ url_for('static', filename='img/openstack-logo.png') }}";
+  function iconClass(c) {
+    return (c.provider_label || '').toLowerCase() === 'aws' ? 'aws' : 'openstack';
+  }
+  function iconHtml(c) {
+    if ((c.provider_label || '').toLowerCase() === 'aws') {
+      return '<i class="fab fa-aws"></i>';
+    }
+    return '<img src="' + OPENSTACK_LOGO + '" alt="OpenStack" ' +
+           'style="width:100%;height:100%;object-fit:contain;">';
+  }
+  // Same normalization as the platform's auto-match: a credential belongs to a
+  // cloud when its Keystone auth_url matches the cloud's one.
+  function normUrl(u) {
+    u = (u || '').trim().toLowerCase().replace(/\/+$/, '');
+    ['/v3', '/v2.0'].forEach(function (sfx) {
+      if (u.slice(-sfx.length) === sfx) u = u.slice(0, -sfx.length);
+    });
+    return u;
+  }
+  var cloudsById = {};
+
+  function renderTiles(data) {
+    cloudsById = {};
+    var row = $('#cloudTiles').empty();
+    if (!data.clouds || data.clouds.length === 0) {
+      row.append('<div class="col-12"><div class="alert alert-info mb-0">' +
+        'No cloud providers available yet. <a href="{{ url_for('vault_bp.manage_service_creds') }}" class="alert-link">' +
+        'Save your Service Credentials</a> for a cloud to enable it here.</div></div>');
+      return;
+    }
+    data.clouds.forEach(function (c) { cloudsById[c.id] = c; });
+    data.clouds.forEach(function (c) {
+      var tile = $(
+        '<div class="col-md-3 col-sm-6 mb-2"><div class="cloud-tile" data-cloud="' + c.id + '">' +
+          '<div class="cloud-icon ' + iconClass(c) + '">' + iconHtml(c) + '</div>' +
+          '<div><p class="cloud-name">' + c.display_name + '</p>' +
+               '<p class="cloud-label">' + c.provider_label + '</p></div>' +
+          '<i class="fas fa-check-circle cloud-check"></i>' +
+        '</div></div>');
+      if (c.id === data.selected) tile.find('.cloud-tile').addClass('selected');
+      row.append(tile);
+    });
+    $('.cloud-tile').on('click', function () { select($(this).data('cloud')); });
+    refreshCredsPicker();
+  }
+
+  function select(cloudId, credsName) {
+    $.post(SELECT_URL, { cloud: cloudId, credentials: credsName || '' })
+      .done(function () {
+        $('.cloud-tile').removeClass('selected');
+        $('.cloud-tile[data-cloud="' + cloudId + '"]').addClass('selected');
+        if (credsName === undefined) { $('#credsPicker').val(''); }
+        refreshCredsPicker();
+      })
+      .fail(function () { alert('Could not select this cloud provider.'); });
+  }
+
+  // Show only the Service Credentials that belong to the selected cloud:
+  // AWS creds only under AWS clouds; OpenStack creds only under the cloud
+  // whose Keystone auth_url matches the one stored in the credential.
+  // '' = Auto: the agent applies the same matching server-side.
+  function refreshCredsPicker() {
+    var selected = $('.cloud-tile.selected').data('cloud') || '';
+    var cloud = cloudsById[selected] || {};
+    var isAws = (cloud.provider_label || selected).toLowerCase().indexOf('aws') === 0;
+    var picker = $('#credsPicker');
+    var current = picker.val();
+    picker.find('option:not(:first)').remove();
+    var matches = userCreds.filter(function (e) {
+      var t = (e.service_type || '').toLowerCase();
+      if (isAws) return t === 'aws';
+      if (t !== 'openstack') return false;
+      // legacy API without os_auth_url in the listing: fall back to family match
+      if (e.os_auth_url === undefined) return true;
+      return normUrl(e.os_auth_url) === normUrl(cloud.os_auth_url);
+    });
+    matches.forEach(function (e) {
+      picker.append($('<option>').val(e.name).text(e.name));
+    });
+    $('#credsPickerWrap').toggle(matches.length > 0);
+    if (matches.some(function (e) { return e.name === current; })) picker.val(current);
+  }
+
+  $('#credsPicker').on('change', function () {
+    var selected = $('.cloud-tile.selected').data('cloud');
+    if (selected) select(selected, $(this).val());
+  });
+
+  $.get(CREDS_URL).done(function (data) { userCreds = data || []; })
+    .always(function () {
+      $.get(PANEL_URL).done(renderTiles).fail(function () {
+        $('#cloudTiles').html('<div class="col-12 text-danger">Could not load cloud providers.</div>');
+      });
+    });
+})();
+</script>

@@ -14,15 +14,8 @@
                 <button class="btn btn-primary dropdown-toggle" type="button" id="manageCredsBtn" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                   Add credentials
                 </button>
-                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="manageCredsBtn">
-                  <a class="dropdown-item d-flex align-items-center addBtn" href="#" data-service-type="openstack" data-toggle="modal" data-target="#openstackModal">
-                    <img src="{{ url_for('static', filename='img/openstack-logo.png') }}" style="width:18px; height:18px; object-fit:contain;" class="mr-2" alt="OpenStack">
-                    OpenStack credentials
-                  </a>
-                  <a class="dropdown-item d-flex align-items-center addBtn" href="#" data-service-type="aws" data-toggle="modal" data-target="#awsModal">
-                    <i class="fab fa-aws mr-2"></i>
-                    AWS credentials
-                  </a>
+                <div class="dropdown-menu dropdown-menu-right" aria-labelledby="manageCredsBtn" id="addCredsMenu">
+                  <span class="dropdown-item text-muted small">Loading clouds...</span>
                 </div>
               </div>
             </div>
@@ -205,11 +198,38 @@ $(document).ready(function () {
       });
   }
 
+  // Tab on an empty field accepts the suggested (placeholder) value,
+  // then focus moves on as usual.
+  $(document).on('keydown', '#openstackForm input, #awsForm input', function (e) {
+    if (e.key === 'Tab' && !this.value && this.placeholder) {
+      this.value = this.placeholder;
+    }
+  });
+
   $(document).on('show.bs.modal', '#openstackModal, #awsModal', function (event) {
     var serviceType = this.id.replace('Modal', '');
     var trigger = $(event.relatedTarget);
     var form = $('#' + serviceType + 'Form');
     form[0].reset();
+    // Suggested values: shown as grey placeholders, fields stay empty.
+    // Pressing Tab on an empty field accepts the suggestion.
+    $('#' + serviceType + 'Modal .modal-title span.cloud-ctx').remove();
+    var sugg = {};
+    if (trigger.hasClass('cloudAddBtn')) {
+      sugg = {
+        'name':                   trigger.data('suggest-name') || '',
+        'openstack_auth_url':     trigger.data('auth-url') || '',
+        'openstack_region_name':  trigger.data('region') || ''
+      };
+      $('#' + serviceType + 'Modal .modal-title').append(
+        '<span class="cloud-ctx text-muted small ml-2">— ' + (trigger.data('cloud-label') || '') + '</span>');
+    }
+    ['name', 'openstack_auth_url', 'openstack_region_name'].forEach(function (f) {
+      var inp = form.find('[name="' + f + '"]');
+      if (!inp.length) return;
+      inp.attr('placeholder', sugg[f] || '')
+         .attr('title', sugg[f] ? 'Press Tab to use the suggested value' : '');
+    });
     if (trigger.hasClass('editBtn')) {
       var name = trigger.data('name');
       form.find('[name="name"]').val(name).prop('readonly', true);
@@ -276,6 +296,33 @@ $(document).ready(function () {
 
   loadList();
 
+});
+
+// --- Per-cloud "Add credentials" menu, generated from the admin clouds_json ---
+$(function () {
+  var OS_LOGO = "{{ url_for('static', filename='img/openstack-logo.png') }}";
+  $.get("{{ url_for('laniakea_v399_bp.clouds_all') }}").done(function (clouds) {
+    var menu = $('#addCredsMenu').empty();
+    (clouds || []).forEach(function (c) {
+      var isAws = (c.provider_label || '').toLowerCase() === 'aws';
+      var icon = isAws
+        ? '<i class="fab fa-aws mr-2"></i>'
+        : '<img src="' + OS_LOGO + '" style="width:18px;height:18px;object-fit:contain;" class="mr-2" alt="OpenStack">';
+      var item = $('<a class="dropdown-item d-flex align-items-center cloudAddBtn" href="#" data-toggle="modal"></a>')
+        .attr('data-target', isAws ? '#awsModal' : '#openstackModal')
+        .attr('data-cloud-label', c.display_name)
+        .attr('data-suggest-name', isAws ? 'aws_creds' : (c.id || '').replace(/^openstack_/, '') + '_creds')
+        .attr('data-auth-url', c.os_auth_url || '')
+        .attr('data-region', c.region_name || '')
+        .html(icon + c.display_name + ' credentials');
+      menu.append(item);
+    });
+    if (!clouds || clouds.length === 0) {
+      menu.append('<span class="dropdown-item text-muted small">No clouds configured</span>');
+    }
+  }).fail(function () {
+    $('#addCredsMenu').html('<span class="dropdown-item text-danger small">Could not load clouds</span>');
+  });
 });
 </script>
 {% endblock %}

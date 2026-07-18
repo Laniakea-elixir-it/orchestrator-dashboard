@@ -250,13 +250,16 @@ def update_ssh_key(subject):
 def manage_service_creds():
   slas={}
 
-  try:
-    access_token = auth.get_access_token()
-    slas = sla.get_slas(access_token, settings.orchestratorConf['slam_url'], settings.orchestratorConf['cmdb_url'])
-    app.logger.debug("Service details: {}".format(slas))
+  # SLAM is the legacy IAM-only SLA service: with Keycloak it always
+  # returns 401, so skip the call entirely for non-IAM providers.
+  if session.get('auth_provider') == 'iam':
+    try:
+      access_token = auth.get_access_token()
+      slas = sla.get_slas(access_token, settings.orchestratorConf['slam_url'], settings.orchestratorConf['cmdb_url'])
+      app.logger.debug("Service details: {}".format(slas))
 
-  except Exception as e:
-        flash("Error retrieving SLAs list: \n" + str(e), 'warning')
+    except Exception as e:
+          flash("Error retrieving SLAs list: \n" + str(e), 'warning')
 
   return render_template('service_creds.html', slas=slas)
 

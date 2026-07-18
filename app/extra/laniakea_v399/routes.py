@@ -114,6 +114,167 @@ def _parse_ports(form):
     return out
 
 
+# ---------------------------------------------------------------------------
+# Cloud context panel
+# The per-cloud JSON files (clouds_json dir) are the single admin-managed
+# source of truth. Optional fields used here:
+#   display_name     : label shown in the panel (default: file name)
+#   provider_label   : e.g. "OpenStack" / "AWS" (default from file prefix)
+#   allowed_groups   : list of user groups that can deploy on this cloud.
+#                      Missing/empty = visible to every authenticated user.
+#   default_for_orgs : list of organisation_name values for which this cloud
+#                      is preselected at login (e.g. ["recas", "iam"]).
+# Credentials remain strictly per-user (secret/<sub>/service_creds/...):
+# groups only control visibility/authorization, never credential access.
+# ---------------------------------------------------------------------------
+
+def _clouds_dir():
+    return app.config.get('LANIAKEA_CLOUDS_DIR',
+                          '/etc/orchestrator-dashboard/settings/clouds_json')
+
+def _load_clouds():
+    """Read every *.json cloud config. Returns {cloud_id: dict}."""
+    clouds = {}
+    cdir = _clouds_dir()
+    try:
+        for fname in sorted(os.listdir(cdir)):
+            if not fname.endswith('.json'):
+                continue
+            cid = fname[:-5]
+            try:
+                with open(os.path.join(cdir, fname)) as cf:
+                    clouds[cid] = json.load(cf)
+            except Exception:
+                continue  # malformed file: skip, never break the panel
+    except FileNotFoundError:
+        pass
+    return clouds
+
+def _norm_auth_url(u):
+    u = (u or '').strip().lower().rstrip('/')
+    for suffix in ('/v3', '/v2.0'):
+        if u.endswith(suffix):
+            u = u[: -len(suffix)]
+    return u
+
+def _user_service_creds():
+    """User's saved service credentials, fetched from the API (per-sub Vault)."""
+    try:
+        r = requests.get(f"{LANIAKEA_API_URL}/profile/service_creds",
+                         headers=_headers(auth.get_access_token()),
+                         verify=False, timeout=10)
+        return r.json() if r.ok else []
+    except Exception:
+        return []
+
+def _allowed_clouds():
+    """
+    Clouds visible to the current user. A cloud appears when ANY of:
+      1. the user saved a credential for it (auth_url match / aws creds);
+      2. the login organisation is in the cloud's visible_for_orgs
+         (federated clouds like ReCaS, where the OIDC->Keystone exchange
+         works without app credentials);
+      3. one of the user's groups is in allowed_groups (admin-managed
+         groups, e.g. "cineca" — do NOT put "default" here).
+    Default-group users with no saved credentials see nothing by design.
+    """
+    user_groups = set(session.get('usergroups') or [])
+    org = (session.get('organisation_name') or '').lower()
+
+    creds = _user_service_creds()
+    cred_urls = {_norm_auth_url(c.get('os_auth_url'))
+                 for c in creds
+                 if (c.get('service_type') or '').lower() == 'openstack'
+                 and c.get('os_auth_url')}
+    has_aws_creds = any((c.get('service_type') or '').lower() == 'aws' for c in creds)
+
+    allowed = {}
+    for cid, cfg in _load_clouds().items():
+        is_aws = cfg.get('provider', '') == 'aws' or cid.startswith('aws')
+
+        by_creds = (has_aws_creds if is_aws
+                    else _norm_auth_url(cfg.get('os_auth_url')) in cred_urls)
+        by_org = org and org in [str(o).lower()
+                                 for o in (cfg.get('visible_for_orgs') or [])]
+        by_group = bool(user_groups.intersection(cfg.get('allowed_groups') or []))
+
+        if by_creds or by_org or by_group:
+            allowed[cid] = cfg
+    return allowed
+
+@laniakea_v399_bp.route('/clouds/all')
+@auth.authorized_with_valid_token
+def clouds_all():
+    """Every configured cloud (for the credentials form: saving a credential
+    is how a user gains access, so the full catalog is listed here)."""
+    return json.dumps([
+        {
+            "id": cid,
+            "display_name": cfg.get('display_name', cid),
+            "provider_label": cfg.get('provider_label',
+                                      'AWS' if cid.startswith('aws') else 'OpenStack'),
+            "os_auth_url": cfg.get('os_auth_url', ''),
+            "region_name": cfg.get('region_name', ''),
+        }
+        for cid, cfg in _load_clouds().items()
+    ]), 200, {'Content-Type': 'application/json'}
+
+def _default_cloud(allowed):
+    """Preselection: org match first, then first allowed."""
+    org = (session.get('organisation_name') or '').lower()
+    for cid, cfg in allowed.items():
+        orgs = [str(o).lower() for o in (cfg.get('default_for_orgs') or [])]
+        if org and org in orgs:
+            return cid
+    return next(iter(allowed), None)
+
+@laniakea_v399_bp.route('/clouds/panel')
+@auth.authorized_with_valid_token
+def clouds_panel():
+    """JSON for the provider selection panel in the portfolio."""
+    allowed = _allowed_clouds()
+    selected = session.get('selected_cloud')
+    if selected not in allowed:
+        selected = _default_cloud(allowed)
+        session['selected_cloud'] = selected
+    def _norm_url(u):
+        u = (u or '').strip().lower().rstrip('/')
+        for suffix in ('/v3', '/v2.0'):
+            if u.endswith(suffix):
+                u = u[: -len(suffix)]
+        return u
+
+    return json.dumps({
+        "selected": selected,
+        # who-am-i info: handy to see the exact values to use in the
+        # per-cloud JSONs (visible_for_orgs / allowed_groups)
+        "org": session.get('organisation_name', ''),
+        "groups": session.get('usergroups') or [],
+        "clouds": [
+            {
+                "id": cid,
+                "display_name": cfg.get('display_name', cid),
+                "provider_label": cfg.get('provider_label',
+                                          'AWS' if cid.startswith('aws') else 'OpenStack'),
+                "os_auth_url": _norm_url(cfg.get('os_auth_url', '')),
+                "icon": cfg.get('icon', ''),
+            }
+            for cid, cfg in allowed.items()
+        ],
+    }), 200, {'Content-Type': 'application/json'}
+
+@laniakea_v399_bp.route('/clouds/select', methods=['POST'])
+@auth.authorized_with_valid_token
+def clouds_select():
+    """Persist the user's cloud choice (re-validated against groups)."""
+    cid = (request.form.get('cloud') or '').strip()
+    if cid not in _allowed_clouds():
+        return json.dumps({"error": "cloud not allowed"}), 403, {'Content-Type': 'application/json'}
+    session['selected_cloud'] = cid
+    session['selected_credentials'] = (request.form.get('credentials') or '').strip()
+    return json.dumps({"selected": cid}), 200, {'Content-Type': 'application/json'}
+
+
 @laniakea_v399_bp.route('/deployments')
 @auth.authorized_with_valid_token
 def showdeployments():
@@ -196,20 +357,30 @@ def createdep():
     username          = session.get('preferred_username', user_sub[:8] if user_sub else 'unknown')
     ssh_pub_key       = dbhelpers.get_ssh_pub_key(user_sub) or ''
     #ssh_pub_key       = get_user_ssh_key() or ''
+    if not ssh_pub_key.strip():
+        flash("No SSH public key found in your profile. "
+              "Please upload it in the SSH Keys page before deploying.", 'warning')
+        return redirect(url_for('vault_bp.ssh_keys'))
     deployment_uuid   = str(uuid_generator.uuid1())
 
     from datetime import datetime, timezone
     timestamp = datetime.now(timezone.utc).isoformat()
     
-    # Target cloud selected by the user in the form
-    target_cloud = form.get('extra_opts.selectedCloud', 'openstack_recas').lower()
+    # Target cloud: chosen in the portfolio panel (session), re-validated
+    # against the user's groups. Form value kept as legacy fallback only.
+    allowed = _allowed_clouds()
+    target_cloud = (session.get('selected_cloud')
+                    or form.get('extra_opts.selectedCloud', '')).lower()
+    if target_cloud not in allowed:
+        flash(f"Cloud '{target_cloud or 'none'}' is not available for your groups. "
+              "Please select a cloud provider in the portfolio.", 'danger')
+        return redirect(url_for('home_bp.portfolio'))
 
-    # credentials name
-    credentials_name = form.get('extra_opts.credentialsName', '')
+    # credentials: picked in the panel ('' = auto-match by Auth URL)
+    credentials_name = session.get('selected_credentials', '')
 
     # Load per-cloud config template (auth_url, project_id, endpoints, maps)
-    clouds_dir = app.config.get('LANIAKEA_CLOUDS_DIR', '/etc/orchestrator-dashboard/settings/laniakea-clouds')
-    cloud_cfg_path = os.path.join(clouds_dir, f"{target_cloud}.json")
+    cloud_cfg_path = os.path.join(_clouds_dir(), f"{target_cloud}.json")
     try:
         with open(cloud_cfg_path) as cf:
             cloud = json.load(cf)
@@ -281,7 +452,7 @@ def createdep():
                 "instance_type":   flavor,
                 "hostname":        form.get('hostname', 'LANIAKEA-vm01'),
                 "image":           image,
-                "storage_size":    form.get('storage_size', ''),
+                "storage_size":    form.get('volume_size', form.get('storage_size', '')),
                 "os_distribution": form.get('os_distribution', ''),
                 "os_version":      form.get('os_version', ''),
                 "network_type":    network_type,
@@ -300,6 +471,8 @@ def createdep():
             "endpoint_overrides_volumev3": cloud.get('endpoint_overrides_volumev3', ''),
             "endpoint_overrides_image":    cloud.get('endpoint_overrides_image', ''),
             "private_network_proxy_host":  cloud.get('private_network_proxy_host', ''),
+            "existing_floating_ip":        cloud.get('existing_floating_ip', ''),
+            "keystone_identity_provider":  cloud.get('keystone_identity_provider', ''),
             "ssh_key":                     ssh_pub_key,
             "template":                    cloud.get('template', {"url": "", "path": target_cloud, "branch": "main"}),
             "inputs": {
@@ -308,7 +481,7 @@ def createdep():
                 "image":           image,
                 "os_distribution": form.get('os_distribution', ''),
                 "os_version":      form.get('os_version', ''),
-                "storage_size":    form.get('storage_size', ''),
+                "storage_size":    form.get('volume_size', form.get('storage_size', '')),
                 "network_type":    network_type,
                 "open_ports":      _parse_ports(form),
                 #"open_ports":      json.loads(form.get('open_ports', '[]') or '[]'),
@@ -356,4 +529,3 @@ def createdep():
         flash(f"Error submitting deployment: {exc}", 'danger')
 
     return redirect(url_for('laniakea_v399_bp.showdeployments'))
-
