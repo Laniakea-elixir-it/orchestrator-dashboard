@@ -473,6 +473,7 @@ def createdep():
             "private_network_proxy_host":  cloud.get('private_network_proxy_host', ''),
             "existing_floating_ip":        cloud.get('existing_floating_ip', ''),
             "keystone_identity_provider":  cloud.get('keystone_identity_provider', ''),
+            "tls_insecure":                cloud.get('tls_insecure', False),
             "ssh_key":                     ssh_pub_key,
             "template":                    cloud.get('template', {"url": "", "path": target_cloud, "branch": "main"}),
             "inputs": {
